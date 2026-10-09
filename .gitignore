@@ -1,0 +1,21 @@
+# Local credentials
+.env
+.env.*
+!.env.example
+
+# Uploaded member photos
+uploads/
+peakgym-private/
+
+# Database backups; keep the setup/reference SQL
+*.sql
+!database.sql
+*.sql.gz
+
+# Logs
+*.log
+
+# Editor and Windows files
+.vscode/
+Thumbs.db
+Desktop.ini

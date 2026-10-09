@@ -1,0 +1,439 @@
+/* =========================
+   RESET AND THEME
+========================= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #0b0d0f;
+    --input: #1a1d20;
+    --text: #f2f3f1;
+    --muted: #858b8d;
+    --line: #292e30;
+    --green: #00c9a7;
+    --yellow: #dce45b;
+}
+
+body {
+    min-height: 100vh;
+    overflow-x: hidden;
+    background:
+        radial-gradient(circle at 10% 80%, #00c9a718, transparent 30%),
+        radial-gradient(circle at 90% 15%, #dce45b10, transparent 25%),
+        var(--bg);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+
+/* =========================
+   PAGE AND NAVIGATION
+========================= */
+.page {
+    width: 92%;
+    max-width: 1200px;
+    min-height: 100vh;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar {
+    height: 85px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #ffffff0d;
+}
+
+.nav-links {
+    display: flex;
+    gap: 32px;
+    margin-left: 40px;
+}
+
+.nav-links a,
+.nav-login {
+    font-size: 12px;
+    font-weight: bold;
+    color: #9ca2a4;
+}
+
+/* Kept for the saved signup page */
+.auth-nav {
+    margin-left: auto;
+    width: 500px;
+    transform: translateX(105px);
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+}
+
+.nav-login.active {
+    color: var(--text);
+}
+
+.logo {
+    display: inline-flex;
+    align-items: center;
+    font-family: "Arial Black", Arial, sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -1.5px;
+    line-height: 1;
+}
+
+
+/* =========================
+   AUTH SECTION AND INTRO
+========================= */
+.auth {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    align-items: center;
+    gap: 50px;
+    padding: 40px 0;
+    transform: translateY(-15px);
+}
+
+.label {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.intro h1 {
+    margin: 15px 0;
+    font-size: clamp(48px, 5vw, 70px);
+    line-height: .95;
+    letter-spacing: -3px;
+}
+
+.intro h1 span {
+    display: block;
+    margin-top: 14px;
+    color: #747b7d;
+}
+
+.description {
+    max-width: 430px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+
+/* =========================
+   CARD AND FORM FIELDS
+========================= */
+.card {
+    min-height: 0;
+    padding: 30px 35px;
+    max-width: 450px;
+    width: 100%;
+    justify-self: end;
+    background: #131719f5;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    box-shadow: 0 30px 80px #0008;
+}
+
+h2 {
+    margin-top: 10px;
+    font-size: 32px;
+}
+
+/* Move the login heading and description up slightly */
+.login h2 {
+    margin-top: 0;
+}
+
+/* Kept for the saved signup page */
+.subtext {
+    margin-top: 7px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+form {
+    margin-top: 28px;
+}
+
+form > label {
+    display: block;
+    margin-bottom: 7px;
+    color: #aeb3b4;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+    width: 100%;
+    height: 48px;
+    margin-bottom: 17px;
+    padding: 0 14px;
+    background: var(--input);
+    color: var(--text);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    outline: none;
+}
+
+input:focus {
+    border-color: #465053;
+}
+
+
+/* =========================
+   PASSWORD SHOW AND HIDE
+========================= */
+.password-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.password-wrapper input {
+    width: 100%;
+    padding-right: 45px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 0;
+    width: 35px;
+    height: 48px;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    color: var(--muted);
+    border: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toggle-password:hover {
+    background: transparent;
+    color: var(--text);
+}
+
+.toggle-password svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+
+/* =========================
+   REMEMBER ME AND FORGOT PASSWORD
+========================= */
+.options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: -2px 0 20px;
+    font-size: 11px;
+    color: #777e80;
+}
+
+.options label {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.options a:hover,
+.options a:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+
+/* =========================
+   BUTTONS
+========================= */
+button {
+    width: 100%;
+    height: 48px;
+    border: 0;
+    border-radius: 4px;
+    background: linear-gradient(
+        100deg,
+        var(--green),
+        #73d48c,
+        var(--yellow)
+    );
+    color: #07100e;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+/* Subtle hover only when the login button is enabled */
+#loginSubmit {
+    transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+#loginSubmit:hover:not(:disabled) {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+}
+
+
+/* =========================
+   BOTTOM MESSAGE AND ACCOUNT LINKS
+========================= */
+.switch {
+    margin-top: 25px;
+    text-align: center;
+    color: #656b6d;
+    font-size: 11px;
+}
+
+.switch a {
+    font-weight: bold;
+}
+
+.switch a:hover,
+.switch a:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.switch .admin-contact {
+    color: #ffffff;
+}
+
+
+/* =========================
+   SIGNUP LAYOUT
+   Kept for future staff account creation
+========================= */
+.signup form {
+    margin-top: 20px;
+}
+
+.signup input {
+    margin-bottom: 17px;
+}
+
+.signup .switch {
+    margin-top: 18px;
+}
+
+.password-row {
+    display: flex;
+    gap: 10px;
+}
+
+.password-field {
+    width: 50%;
+}
+
+.password-field label {
+    display: block;
+    margin-bottom: 7px;
+    color: #aeb3b4;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.password-field input {
+    width: 100%;
+}
+
+
+/* =========================
+   ERROR AND SUCCESS MESSAGES
+========================= */
+.error-message {
+    min-height: 16px;
+    margin-bottom: 20px;
+    color: #ff6b6b;
+    font-size: 11px;
+}
+
+.success-message {
+    min-height: 16px;
+    margin-bottom: 20px;
+    color: var(--green) !important;
+    font-size: 11px;
+}
+
+.error-pop {
+    animation: errorPop 0.3s ease;
+}
+
+@keyframes errorPop {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.08);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+
+/* =========================
+   MOBILE LAYOUT
+========================= */
+@media (max-width: 850px) {
+    .nav-links,
+    .auth-nav {
+        display: none;
+    }
+
+    .auth {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .intro {
+        text-align: center;
+    }
+
+    .description {
+        margin: auto;
+    }
+
+    /* Retained because other saved HTML may use this class */
+    .wave {
+        justify-content: center;
+    }
+
+    .card {
+        max-width: 600px;
+        width: 100%;
+        margin: auto;
+    }
+}
+
+@media (max-width: 500px) {
+    .card {
+        padding: 32px 24px;
+    }
+
+    .intro h1 {
+        font-size: 43px;
+    }
+}

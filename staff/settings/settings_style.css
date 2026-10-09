@@ -1,0 +1,213 @@
+/* =========================
+   SETTINGS CARDS
+========================= */
+.settings-card {
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 50px #0003;
+}
+
+.settings-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(
+        100deg,
+        var(--green),
+        var(--yellow)
+    );
+}
+
+.settings-description {
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+/* =========================
+   PASSWORD FORM
+========================= */
+.password-form {
+    width: 100%;
+    max-width: 580px;
+    margin-top: 24px;
+}
+
+.password-field + .password-field {
+    margin-top: 22px;
+}
+
+.password-field label {
+    display: block;
+    margin-bottom: 9px;
+    color: #aeb3b4;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.password-control {
+    display: flex;
+    align-items: stretch;
+    background: var(--input);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+}
+
+.password-control:focus-within {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+}
+
+.password-control input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    height: 46px;
+    padding: 0 14px;
+    background: transparent;
+    color: var(--text);
+    border: 0;
+    border-radius: 5px;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.password-control input:focus {
+    outline: none;
+}
+
+.password-toggle {
+    flex-shrink: 0;
+    min-width: 64px;
+    padding: 0 12px;
+    background: transparent;
+    color: var(--green);
+    border: 0;
+    border-left: 1px solid var(--line);
+    border-radius: 0 5px 5px 0;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    background: #00c9a710;
+}
+
+.password-hint {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.7;
+}
+
+/* =========================
+   SAVE BUTTON
+========================= */
+.settings-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 26px;
+}
+
+.save-password {
+    min-height: 44px;
+    padding: 12px 20px;
+    background: linear-gradient(
+        100deg,
+        var(--green),
+        #73d48c,
+        var(--yellow)
+    );
+    color: #07100e;
+    border: 0;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.save-password:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+.save-password:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+/* =========================
+   FORM MESSAGES
+========================= */
+.settings-message {
+    margin-top: 20px;
+    padding: 14px 16px;
+    border: 1px solid;
+    border-radius: 5px;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.error-message {
+    background: #ff6b6b10;
+    color: #ff6b6b;
+    border-color: #ff6b6b40;
+}
+
+.success-message {
+    background: #00c9a710;
+    color: var(--green);
+    border-color: #00c9a740;
+}
+
+/* =========================
+   MOBILE
+========================= */
+@media (max-width: 500px) {
+    .settings-actions {
+        justify-content: stretch;
+    }
+
+    .save-password {
+        width: 100%;
+    }
+}
+
+/* Eye icon inside the password field */
+.password-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 46px;
+    min-width: 46px;
+    padding: 0;
+    background: transparent;
+    color: var(--muted);
+    border: 0;
+    border-radius: 0 5px 5px 0;
+    cursor: pointer;
+}
+
+.password-toggle svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+}
+
+.password-toggle:hover {
+    background: transparent;
+    color: var(--green);
+}
+
+.password-toggle:focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: -4px;
+}

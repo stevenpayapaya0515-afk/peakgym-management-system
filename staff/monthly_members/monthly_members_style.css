@@ -1,0 +1,692 @@
+/* =========================
+   TOOLBAR
+========================= */
+.member-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 26px;
+}
+
+.member-toolbar input {
+    width: 340px;
+    max-width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    background: var(--input);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+}
+
+.member-toolbar input:focus {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+.primary-button,
+.cancel-button,
+.member-actions button {
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.primary-button {
+    min-height: 44px;
+    padding: 0 20px;
+    background: linear-gradient(
+        100deg,
+        var(--green),
+        #73d48c,
+        var(--yellow)
+    );
+    color: #07100e;
+    border: 0;
+}
+
+.primary-button:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+.primary-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.cancel-button {
+    min-height: 44px;
+    padding: 0 20px;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line);
+}
+
+.cancel-button:hover {
+    background: var(--input);
+}
+
+/* =========================
+   INLINE FORM PANEL
+========================= */
+.member-form-panel {
+    margin-top: 24px;
+    padding: 28px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+}
+
+.member-panel-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+}
+
+.member-panel-heading h2 {
+    margin: 0;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+}
+
+.member-panel-heading p {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.member-panel-heading > button {
+    flex-shrink: 0;
+}
+
+.member-editor-grid {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    align-items: start;
+    gap: 32px;
+    margin-top: 24px;
+}
+
+.member-editor-grid.renew-layout {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.member-photo-field,
+.member-details-fields,
+.member-field {
+    min-width: 0;
+}
+
+.member-field-label,
+.member-field label {
+    display: block;
+    margin: 0 0 10px;
+    color: #aeb3b4;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.member-field input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 46px;
+    padding: 0 14px;
+    background: var(--input);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+    color-scheme: dark;
+}
+
+.member-field input:focus {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+}
+
+.member-field input[readonly] {
+    color: var(--muted);
+}
+
+.member-date-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 22px;
+}
+
+.member-field-hint {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.7;
+}
+
+.member-panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 26px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+}
+
+/* =========================
+   PHOTO UPLOAD
+========================= */
+.member-photo-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 145px;
+    overflow: hidden;
+    background: var(--input);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}
+
+.member-photo-preview img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.member-photo-preview span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.photo-upload-button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 38px;
+    margin-top: 10px;
+    overflow: hidden;
+    background: var(--input);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.photo-upload-button:hover {
+    border-color: var(--green);
+}
+
+.photo-upload-button:focus-within {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+}
+
+.photo-upload-button input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.photo-file-name {
+    margin-top: 8px;
+    overflow-wrap: anywhere;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.member-photo-error {
+    margin-top: 10px;
+    color: #ff6b6b;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+/* =========================
+   MEMBER TABLE
+========================= */
+.member-table {
+    margin-top: 24px;
+    overflow-x: auto;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+}
+
+.member-table table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.member-table th {
+    padding: 20px;
+    color: #aeb3b4;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.member-table td {
+    padding: 18px 20px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+    line-height: 1.6;
+    vertical-align: middle;
+}
+
+.member-table th:last-child {
+    text-align: center;
+}
+
+.member-identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 180px;
+}
+
+.member-name {
+    overflow-wrap: anywhere;
+}
+
+.member-thumbnail,
+.photo-placeholder {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.photo-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--input);
+    color: var(--muted);
+}
+
+.member-date {
+    white-space: nowrap;
+}
+
+.member-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.member-actions button {
+    padding: 8px 10px;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line);
+}
+
+.member-actions button:hover:not(:disabled) {
+    background: var(--input);
+}
+
+.member-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.member-actions .renew-member {
+    color: var(--green);
+    border-color: #00c9a730;
+}
+
+.member-status {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.active-status {
+    background: #00c9a712;
+    color: var(--green);
+}
+
+.expired-status {
+    background: #ff6b6b12;
+    color: #ff6b6b;
+}
+
+.upcoming-status {
+    background: #dce45b12;
+    color: var(--yellow);
+}
+
+.muted {
+    color: var(--muted);
+}
+
+.empty-message {
+    height: 140px;
+    text-align: center;
+    color: var(--muted);
+}
+
+.member-error {
+    margin-top: 20px;
+    padding: 14px;
+    background: #ff6b6b10;
+    color: #ff6b6b;
+    border: 1px solid #ff6b6b40;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+/* =========================
+   HISTORY / SUCCESS DIALOGS
+========================= */
+.member-modal {
+    width: calc(100% - 40px);
+    max-width: 440px;
+    max-height: calc(100vh - 40px);
+    margin: auto;
+    padding: 28px;
+    overflow-y: auto;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 25px 80px #0008;
+    color-scheme: dark;
+}
+
+.member-modal::backdrop {
+    background: #0009;
+}
+
+.member-modal h2 {
+    font-size: 23px;
+    letter-spacing: -0.5px;
+}
+
+.history-name {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.history-list {
+    margin-top: 32px;
+}
+
+/* Space below the member name in History */
+.member-modal .history-name {
+    margin-bottom: 28px;
+}
+
+.history-period {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+}
+
+.history-period span:last-child {
+    text-align: right;
+}
+
+.history-arrow,
+.history-empty {
+    color: var(--muted);
+}
+
+.history-empty {
+    font-size: 13px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.success-modal {
+    text-align: center;
+}
+
+.success-modal h2 {
+    color: var(--green);
+}
+
+.success-modal p {
+    margin: 16px 0 24px;
+    color: #aeb3b4;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.success-modal button {
+    width: 100%;
+}
+
+/* Preserve hidden elements */
+[hidden] {
+    display: none !important;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 950px) {
+    .member-editor-grid {
+        grid-template-columns: 160px minmax(0, 1fr);
+        gap: 22px;
+    }
+}
+
+@media (max-width: 600px) {
+    .member-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .member-toolbar input {
+        width: 100%;
+    }
+
+    .member-form-panel {
+        padding: 20px;
+    }
+
+    .member-editor-grid,
+    .member-date-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .member-photo-field {
+        width: 100%;
+        max-width: 220px;
+    }
+
+    .member-panel-heading {
+        gap: 12px;
+    }
+
+    .member-panel-heading h2 {
+        font-size: 20px;
+    }
+
+    .member-panel-actions button {
+        flex: 1;
+    }
+}
+
+
+/* =========================
+   SEARCH ICON
+========================= */
+.member-search-box {
+    position: relative;
+    width: 340px;
+    max-width: 100%;
+}
+
+.member-search-box svg {
+    position: absolute;
+    top: 50%;
+    left: 14px;
+    width: 18px;
+    height: 18px;
+    color: var(--muted);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.member-toolbar .member-search-box input {
+    width: 100%;
+    padding-left: 42px;
+}
+
+.member-search-box:focus-within svg {
+    color: var(--green);
+}
+
+/* =========================
+   DELETE BUTTON
+========================= */
+.member-actions .delete-member {
+    color: #ff6b6b;
+    border-color: #ff6b6b40;
+}
+
+.member-actions .delete-member:hover {
+    background: #ff6b6b15;
+    border-color: #ff6b6b;
+}
+
+.danger-button {
+    min-height: 44px;
+    padding: 0 20px;
+    background: #ff6b6b;
+    color: #210808;
+    border: 1px solid #ff6b6b;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.danger-button:hover:not(:disabled) {
+    background: #ff8585;
+    border-color: #ff8585;
+}
+
+.danger-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+/* =========================
+   DELETE CONFIRMATION
+========================= */
+.delete-member-modal h2 {
+    color: #ff6b6b;
+}
+
+.delete-member-description {
+    margin-top: 16px;
+    color: #aeb3b4;
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.delete-member-description strong {
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+.delete-member-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+@media (max-width: 600px) {
+    .member-search-box {
+        width: 100%;
+    }
+
+    .delete-member-buttons button {
+        flex: 1;
+    }
+}
+
+.history-labels {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.history-labels span:last-child {
+    text-align: right;
+}
+
+/* Match the Membership overview card design */
+.overview-card {
+    background:
+        linear-gradient(
+            100deg,
+            var(--green),
+            var(--yellow)
+        ) top left / 100% 2px no-repeat,
+        #131719f5;
+
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    box-shadow: 0 20px 50px #0003;
+    overflow-x: auto;
+}
+
+/* Keep the gradient visible above the table */
+.overview-card > table {
+    margin-top: 2px;
+}
+
+/* Match the overview card label color */
+.overview-card th {
+    color: var(--green);
+}
