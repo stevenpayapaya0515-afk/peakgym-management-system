@@ -262,6 +262,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PeakGym Management</title>
     <link rel="stylesheet" href="style.css?v=3">
+    <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 
 <body>

@@ -959,6 +959,7 @@ foreach ($periods as $period) {
     <title>Monthly Members | PeakGym</title>
     <link rel="stylesheet" href="../dashboard_style.css?v=1">
     <link rel="stylesheet" href="monthly_members_style.css?v=11">
+    <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 
 <body>

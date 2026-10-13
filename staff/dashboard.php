@@ -207,13 +207,10 @@ function escapeHtml($value)
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport"content="width=device-width, initial-scale=1.0">
     <title>Staff Dashboard | PeakGym</title>
-
     <link rel="stylesheet" href="dashboard_style.css?v=8">
+    <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 
 <body>
