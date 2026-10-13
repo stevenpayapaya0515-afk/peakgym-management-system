@@ -350,7 +350,7 @@ $staffAccounts = mysqli_fetch_all($result, MYSQLI_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Management | PeakGym</title>
-    <link rel="stylesheet" href="user_management_style.css?v=13">
+    <link rel="stylesheet" href="user_management_style.css?v=14">
     <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 

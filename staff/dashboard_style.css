@@ -251,7 +251,6 @@ h1 {
 /* =========================
    SHARED CARD DESIGN
 ========================= */
-.welcome-card,
 .membership-summary-card {
     position: relative;
     overflow: hidden;
@@ -261,34 +260,12 @@ h1 {
     box-shadow: 0 20px 50px #0003;
 }
 
-.welcome-card::before,
-.membership-summary-card::before {
-    position: absolute;
-    top: 0;
-    right: 0;
-    left: 0;
-    height: 2px;
-    background: linear-gradient(
-        100deg,
-        var(--green),
-        var(--yellow)
-    );
-    content: "";
-}
-
 /* =========================
    WELCOME CARD
 ========================= */
 .welcome-card {
     margin-top: 30px;
-    padding: 32px;
-}
-
-.label {
-    color: var(--green);
-    font-size: 10px;
-    font-weight: bold;
-    letter-spacing: 2px;
+    padding: 0;
 }
 
 .welcome-card h2 {
@@ -310,7 +287,7 @@ h1 {
    MEMBERSHIP OVERVIEW
 ========================= */
 .membership-overview {
-    margin-top: 30px;
+    margin-top: 50px;
 }
 
 .membership-overview-heading {
@@ -537,7 +514,6 @@ button:focus-visible {
         padding: 28px 20px;
     }
 
-    .welcome-card,
     .account-card {
         padding: 24px;
     }

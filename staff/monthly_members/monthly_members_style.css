@@ -665,26 +665,14 @@
     text-align: right;
 }
 
-/* Match the Membership overview card design */
 .overview-card {
-    background:
-        linear-gradient(
-            100deg,
-            var(--green),
-            var(--yellow)
-        ) top left / 100% 2px no-repeat,
-        #131719f5;
-
+    background: #131719f5;
     border: 1px solid var(--line);
     border-radius: 7px;
     box-shadow: 0 20px 50px #0003;
     overflow-x: auto;
 }
 
-/* Keep the gradient visible above the table */
-.overview-card > table {
-    margin-top: 2px;
-}
 
 /* Match the overview card label color */
 .overview-card th {

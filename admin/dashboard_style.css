@@ -313,19 +313,11 @@ button {
     box-shadow: 0 20px 50px #0003;
 }
 
+/* Remove colored lines above dashboard cards */
 .stat::before,
+.welcome-card::before,
 .membership-summary-card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    left: 0;
-    height: 2px;
-    background: linear-gradient(
-        100deg,
-        var(--green),
-        var(--yellow)
-    );
+    content: none;
 }
 
 .stat-label,

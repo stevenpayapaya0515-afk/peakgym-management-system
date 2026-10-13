@@ -209,7 +209,7 @@ function escapeHtml($value)
     <meta charset="UTF-8">
     <meta name="viewport"content="width=device-width, initial-scale=1.0">
     <title>Staff Dashboard | PeakGym</title>
-    <link rel="stylesheet" href="dashboard_style.css?v=10">
+    <link rel="stylesheet" href="dashboard_style.css?v=14">
     <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 
@@ -309,10 +309,6 @@ function escapeHtml($value)
             <!-- FIRST: WELCOME CARD -->
             <section class="welcome-card"
                      aria-labelledby="welcomeTitle">
-
-                <p class="label">
-                    PEAKGYM MANAGEMENT
-                </p>
 
                 <h2 id="welcomeTitle">
                     Welcome, <?php echo escapeHtml($staff["username"]); ?>

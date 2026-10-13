@@ -234,7 +234,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Settings | PeakGym</title>
     <link rel="stylesheet" href="../dashboard_style.css?v=9">
-    <link rel="stylesheet" href="settings_style.css?v=4">
+    <link rel="stylesheet" href="settings_style.css?v=5">
     <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 

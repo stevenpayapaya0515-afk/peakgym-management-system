@@ -211,7 +211,7 @@ function escapeHtml($value) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard | PeakGym</title>
-    <link rel="stylesheet" href="dashboard_style.css?v=12">
+    <link rel="stylesheet" href="dashboard_style.css?v=13">
     <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 
