@@ -209,7 +209,7 @@ function escapeHtml($value)
     <meta charset="UTF-8">
     <meta name="viewport"content="width=device-width, initial-scale=1.0">
     <title>Staff Dashboard | PeakGym</title>
-    <link rel="stylesheet" href="dashboard_style.css?v=8">
+    <link rel="stylesheet" href="dashboard_style.css?v=10">
     <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 
@@ -218,11 +218,18 @@ function escapeHtml($value)
 
         <!-- SIDEBAR -->
         <aside class="sidebar">
-            <div class="logo">PEAKGYM</div>
+            <div class="sidebar-brand">
+                <img
+                    src="/Payapaya_Security1/assets/logo_peak.png"
+                    alt="Peak Gym logo"
+                    class="sidebar-brand-image"
+                >
 
-            <p class="sidebar-caption">
-                Management System
-            </p>
+                <div class="sidebar-brand-text">
+                    <div class="logo">PEAKGYM</div>
+                    <p class="sidebar-caption">Management System</p>
+                </div>
+            </div>
 
             <nav class="navigation" aria-label="Staff navigation">
                 <a

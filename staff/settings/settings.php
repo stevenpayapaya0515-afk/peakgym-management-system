@@ -233,8 +233,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Settings | PeakGym</title>
-    <link rel="stylesheet" href="../dashboard_style.css?v=8">
-    <link rel="stylesheet" href="settings_style.css?v=2">
+    <link rel="stylesheet" href="../dashboard_style.css?v=9">
+    <link rel="stylesheet" href="settings_style.css?v=4">
     <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 
@@ -243,8 +243,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         <!-- SIDEBAR -->
         <aside class="sidebar">
-            <div class="logo">PEAKGYM</div>
-            <p class="sidebar-caption">Management System</p>
+            <div class="sidebar-brand">
+                <img
+                    src="/Payapaya_Security1/assets/logo_peak.png"
+                    alt="Peak Gym logo"
+                    class="sidebar-brand-image"
+                >
+
+                <div class="sidebar-brand-text">
+                    <div class="logo">PEAKGYM</div>
+                    <p class="sidebar-caption">Management System</p>
+                </div>
+            </div>
 
             <nav class="navigation" aria-label="Staff navigation">
                 <a href="../dashboard.php">

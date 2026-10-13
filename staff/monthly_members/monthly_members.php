@@ -958,7 +958,7 @@ foreach ($periods as $period) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monthly Members | PeakGym</title>
     <link rel="stylesheet" href="../dashboard_style.css?v=1">
-    <link rel="stylesheet" href="monthly_members_style.css?v=11">
+    <link rel="stylesheet" href="monthly_members_style.css?v=17">
     <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 
@@ -967,11 +967,18 @@ foreach ($periods as $period) {
 
         <!-- SIDEBAR -->
         <aside class="sidebar">
-            <div class="logo">PEAKGYM</div>
+            <div class="sidebar-brand">
+                <img
+                    src="/Payapaya_Security1/assets/logo_peak.png"
+                    alt="Peak Gym logo"
+                    class="sidebar-brand-image"
+                >
 
-            <p class="sidebar-caption">
-                Management System
-            </p>
+                <div class="sidebar-brand-text">
+                    <div class="logo">PEAKGYM</div>
+                    <p class="sidebar-caption">Management System</p>
+                </div>
+            </div>
 
             <nav class="navigation"
                 aria-label="<?php echo escapeHtml($navigationLabel); ?>">
