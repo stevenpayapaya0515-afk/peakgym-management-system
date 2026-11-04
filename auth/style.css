@@ -437,3 +437,38 @@ button {
         font-size: 43px;
     }
 }
+
+/* Logo beside PEAKGYM in the header */
+.login-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.login-brand img {
+    display: block;
+    width: 70px;
+    height: 70px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+/* FOOTER */
+footer {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    font-size: 11px;
+    line-height: 1.7;
+}
+
+a:focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: 4px;
+}

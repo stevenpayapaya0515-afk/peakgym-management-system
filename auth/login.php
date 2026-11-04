@@ -261,7 +261,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PeakGym Management</title>
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=11">
     <link rel="icon" type="image/png" href="/Payapaya_Security1/assets/favicon.png">
 </head>
 
@@ -270,13 +270,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         <!-- NAVIGATION -->
         <header class="navbar">
+            <div class="login-brand">
+                <img
+                    src="../assets/logo_peak.png"
+                    alt="Peak Gym logo"
+                    width="60"
+                    height="60"
+                >
             <div class="logo">PEAKGYM</div>
-
             <nav class="nav-links">
-                <a href="#">About</a>
+                <a href="about/about.php">About</a>
                 <a href="#">Security</a>
                 <a href="#">Help</a>
             </nav>
+            </div>
         </header>
 
         <!-- LOGIN SECTION -->
@@ -379,5 +386,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         });
     </script>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="copyright">
+            &copy; <?php echo date('Y'); ?> PeakGym Fitness.
+            All rights reserved.
+        </div>
+
+        <div class="design-tag">
+            Designed with passion for fitness
+        </div>
+    </footer>
 </body>
 </html>
