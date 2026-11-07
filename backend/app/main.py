@@ -9,6 +9,8 @@ from app.routes.users import router as users_router
 from app.routes.members import router as members_router
 from app.routes.memberships import router as memberships_router
 from app.routes.dashboard import router as dashboard_router
+from app.routes.settings import router as settings_router
+from app.routes.settings import router as settings_router
 
 app = FastAPI(
     title="PeakGym Management System API",
@@ -32,6 +34,7 @@ app.include_router(users_router)
 app.include_router(members_router)
 app.include_router(memberships_router)
 app.include_router(dashboard_router)
+app.include_router(settings_router)
 
 
 @app.get("/")

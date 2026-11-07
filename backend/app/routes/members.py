@@ -199,10 +199,9 @@ def upload_member_photo(
                     detail="Image must not exceed 12 megapixels"
                 )
 
+            image_format = image.format
             image = ImageOps.exif_transpose(image)
             image.load()
-
-            image_format = image.format
 
             if image_format == "JPEG":
                 image = image.convert("RGB")

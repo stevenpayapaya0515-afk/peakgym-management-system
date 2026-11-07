@@ -3,6 +3,13 @@ import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/storage/token_storage.dart';
 import '../../core/theme/app_theme.dart';
+import '../admin/admin_dashboard.dart';
+import '../public/public_navigation.dart';
+import '../public/about_screen.dart';
+import '../public/security_screen.dart';
+import '../public/help_screen.dart';
+import '../staff/staff_dashboard.dart';
+import 'dart:async';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,18 +20,75 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  bool _isContactHovered = false;
   bool _isPasswordVisible = false;
   bool _isLoading = false;
-  bool _rememberMe = false;
-
   String? _errorMessage;
 
+  Timer? _lockoutTimer;
+  DateTime? _lockoutEndsAt;
+  int _lockoutSeconds = 0;
+
+  @override
+  void dispose() {
+    _lockoutTimer?.cancel();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _startLockoutCountdown(int seconds) {
+    _lockoutTimer?.cancel();
+
+    if (seconds <= 0) return;
+
+    _lockoutEndsAt = DateTime.now().add(Duration(seconds: seconds));
+
+    setState(() {
+      _lockoutSeconds = seconds;
+      _errorMessage =
+          'Too many failed attempts. Try again in $seconds seconds.';
+    });
+
+    _lockoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      final milliseconds =
+          _lockoutEndsAt!.difference(DateTime.now()).inMilliseconds;
+      final remaining = (milliseconds / 1000).ceil();
+
+      if (remaining <= 0) {
+        timer.cancel();
+
+        setState(() {
+          _lockoutSeconds = 0;
+          _lockoutEndsAt = null;
+          _errorMessage = null;
+        });
+        return;
+      }
+
+      setState(() {
+        _lockoutSeconds = remaining;
+        _errorMessage =
+            'Too many failed attempts. Try again in $remaining seconds.';
+      });
+    });
+  }
+
   Future<void> _login() async {
+    if (_isLoading || _lockoutSeconds > 0) return;
     if (!_formKey.currentState!.validate()) return;
+
+    FocusScope.of(context).unfocus();
 
     setState(() {
       _isLoading = true;
@@ -39,281 +103,475 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      if (response['status_code'] == 200) {
-        final token = response['access_token'];
+      if (response['status_code'] != 200) {
+        final message = response['detail']?.toString() ??
+            'Login failed. Please try again.';
 
-        if (token == null) {
+        final match = RegExp(
+          r'try again in (\d+) seconds?',
+          caseSensitive: false,
+        ).firstMatch(message);
+
+        final seconds = int.tryParse(match?.group(1) ?? '') ?? 0;
+
+        if (seconds > 0) {
+          _startLockoutCountdown(seconds);
+        } else {
           setState(() {
-            _errorMessage = 'Invalid server response.';
+            _errorMessage = message;
           });
-          return;
         }
 
-        await TokenStorage.saveToken(token.toString());
+        return;
+      }
 
-        if (!mounted) return;
+      final token = response['access_token'];
+      final user = response['user'];
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login successful!'),
-            backgroundColor: AppTheme.primaryGreen,
-          ),
-        );
+      if (token is! String ||
+          token.isEmpty ||
+          user is! Map<String, dynamic>) {
+        setState(() {
+          _errorMessage = 'Invalid response from the server.';
+        });
+        return;
+      }
 
-        // Dashboard navigation will be added next.
+      final role = user['role']?.toString().trim().toLowerCase();
+
+      final Widget destination;
+
+      if (role == 'admin') {
+        destination = const AdminDashboard();
+      } else if (role == 'staff') {
+        destination = const StaffDashboard();
       } else {
         setState(() {
           _errorMessage =
-              response['detail']?.toString() ??
-              'Login failed. Please try again.';
+              'This account does not have a supported role.';
         });
+        return;
       }
-    } catch (e) {
+
+      await TokenStorage.saveToken(token);
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => destination,
+        ),
+      );
+    } catch (_) {
       if (!mounted) return;
 
       setState(() {
         _errorMessage =
-            'Unable to connect to the server. Please try again.';
+            'Unable to complete login. Please check your connection '
+            'and try again.';
       });
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
 
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
+  void _openPage(String page) {
+    if (_isLoading) return;
+
+    final Widget screen;
+
+    switch (page) {
+      case 'About':
+        screen = const AboutScreen();
+        break;
+      case 'Security':
+        screen = const SecurityScreen();
+        break;
+      case 'Help':
+        screen = const HelpScreen();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => screen),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(-0.9, 0.7),
-            radius: 1.3,
-            colors: [
-              Color(0x3325A98D),
-              AppTheme.background,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: LayoutBuilder(
+      key: _scaffoldKey,
+      backgroundColor: AppTheme.background,
+      drawer: PublicNavigation(
+        onSelected: _openPage,
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          LayoutBuilder(
             builder: (context, constraints) {
-              final isMobile = constraints.maxWidth < 850;
+              final isDesktop = constraints.maxWidth >= 960;
 
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight,
+              return Image.asset(
+                'assets/login_dumbbell.jpg',
+                fit: BoxFit.cover,
+                alignment: isDesktop
+                    ? const Alignment(0.7, -0.65)
+                    : Alignment.center,
+                excludeFromSemantics: true,
+                errorBuilder: (context, error, stackTrace) {
+                  return const ColoredBox(
+                    color: AppTheme.background,
+                  );
+                },
+              );
+            },
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Color(0xD9080D0B),
+                  Color(0x66080D0B),
+                  Color(0x99080D0B),
+                ],
+                stops: [0, 0.55, 1],
+              ),
+            ),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.bottomLeft,
+                radius: 1.1,
+                colors: [
+                  Color(0x3300C9A7),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+          // Fade the lower background on mobile.
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= 960) {
+                return const SizedBox.shrink();
+              }
+
+              return const IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Color(0x990B0D0F),
+                        AppTheme.background,
+                      ],
+                      stops: [0.55, 0.8, 1.0],
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      _buildNavbar(),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isMobile ? 24 : 60,
-                          vertical: isMobile ? 40 : 70,
-                        ),
-                        child: isMobile
-                            ? Column(
-                                children: [
-                                  _buildIntroduction(isMobile),
-                                  const SizedBox(height: 40),
-                                  _buildLoginCard(),
-                                ],
-                              )
-                            : Row(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    child: _buildIntroduction(isMobile),
-                                  ),
-                                  const SizedBox(width: 50),
-                                  Expanded(
-                                    child: Center(
-                                      child: _buildLoginCard(),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                      _buildFooter(),
-                    ],
-                  ),
+                  child: SizedBox.expand(),
                 ),
               );
             },
           ),
-        ),
-      ),
-    );
-  }
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: _buildNavigation(),
+                ),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isDesktop = constraints.maxWidth >= 960;
+                      final sidePadding = isDesktop ? 48.0 : 20.0;
 
-  Widget _buildNavbar() {
-    return Container(
-      height: 85,
-      padding: const EdgeInsets.symmetric(horizontal: 35),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: AppTheme.borderColor,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Image.asset(
-            'assets/logo_peak.png',
-            width: 55,
-            height: 55,
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'PEAKGYM',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.5,
-              color: AppTheme.primaryText,
+                      return SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              sidePadding,
+                              isDesktop ? 8 : 28,
+                              sidePadding,
+                              12,
+                            ),
+                            child: Column(
+                              mainAxisAlignment: isDesktop
+                                  ? MainAxisAlignment.spaceBetween
+                                  : MainAxisAlignment.start,
+                              children: [
+                                Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 1180,
+                                    ),
+                                    child: _buildContent(isDesktop),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 16),
+                                  child: Center(
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 1180,
+                                      ),
+                                      child: _buildPageFooter(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
-          const Spacer(),
-          if (MediaQuery.of(context).size.width > 500) ...[
-            _navItem('About'),
-            const SizedBox(width: 25),
-            _navItem('Security'),
-            const SizedBox(width: 25),
-            _navItem('Help'),
-          ],
         ],
       ),
     );
   }
 
-  Widget _navItem(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        color: AppTheme.secondaryText,
-        fontSize: 13,
+  Widget _buildContent(bool isDesktop) {
+    if (isDesktop) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: _buildIntroduction(compact: false),
+          ),
+          const SizedBox(width: 56),
+          SizedBox(
+            width: 420,
+            child: _buildLoginBox(),
+          ),
+        ],
+      );
+    }
+
+    // Mobile: login box only, without the introduction.
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: _buildLoginBox(),
       ),
     );
   }
 
-  Widget _buildIntroduction(bool isMobile) {
+  Widget _buildNavigation() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppTheme.borderColor,
+          ),
+        ),
+        child: IconButton(
+          tooltip: 'Open navigation menu',
+          onPressed: _isLoading
+              ? null
+              : () => _scaffoldKey.currentState?.openDrawer(),
+          icon: const Icon(
+            Icons.menu_rounded,
+            color: AppTheme.primaryText,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIntroduction({required bool compact}) {
     return Column(
-      crossAxisAlignment: isMobile
-          ? CrossAxisAlignment.center
-          : CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'PEAKGYM MANAGEMENT',
           style: TextStyle(
             color: AppTheme.primaryGreen,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 2.5,
           ),
         ),
         const SizedBox(height: 20),
         Text(
-          'Manage your gym.\nKeep it moving.',
-          textAlign: isMobile ? TextAlign.center : TextAlign.left,
+          'Manage your gym.',
           style: TextStyle(
             color: AppTheme.primaryText,
-            fontSize: isMobile ? 40 : 58,
+            fontSize: compact ? 34 : 52,
             fontWeight: FontWeight.w900,
-            height: 1.05,
-            letterSpacing: -2,
+            letterSpacing: -1.5,
+            height: 1.1,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 6),
         Text(
-          'Your space for managing members, attendance, '
-          'and everyday gym operations.',
-          textAlign: isMobile ? TextAlign.center : TextAlign.left,
-          style: const TextStyle(
-            color: AppTheme.secondaryText,
-            fontSize: 16,
-            height: 1.7,
+          'Keep it moving.',
+          style: TextStyle(
+            color: const Color(0xFFB7C8BF),
+            fontSize: compact ? 34 : 52,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1.5,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 24),
+        Container(
+          width: 80,
+          height: 4,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            gradient: const LinearGradient(
+              colors: [
+                AppTheme.primaryGreen,
+                AppTheme.accentYellow,
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: const Text(
+            'Your space for managing members, attendance, '
+            'and everyday gym operations.',
+            style: TextStyle(
+              color: Color(0xFFD1D9D5),
+              fontSize: 15,
+              height: 1.8,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLoginCard() {
+  Widget _buildLoginBox() {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(
-        maxWidth: 450,
-      ),
-      padding: const EdgeInsets.all(35),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cardBackground,
+        color: const Color(0xF2131719),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: AppTheme.borderColor,
+          color: const Color(0xFF39433F),
         ),
-        borderRadius: BorderRadius.circular(7),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 30,
-            offset: const Offset(0, 15),
+            color: Color(0x66000000),
+            blurRadius: 36,
+            offset: Offset(0, 18),
           ),
         ],
       ),
+      child: _buildLoginForm(),
+    );
+  }
+
+  Widget _buildLoginForm() {
+    const loginGradient = LinearGradient(
+      colors: [
+        AppTheme.primaryGreen,
+        Color(0xFF75D69B),
+        AppTheme.accentYellow,
+      ],
+    );
+
+    return AutofillGroup(
       child: Form(
         key: _formKey,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Log In',
-              style: TextStyle(
-                color: AppTheme.primaryText,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+            Center(
+              child: Image.asset(
+                'assets/logo_peak.png',
+                width: 96,
+                height: 96,
+                fit: BoxFit.contain,
+                semanticLabel: 'PeakGym logo',
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 15),
+
+            // Same gradient as the login button.
+            ShaderMask(
+              blendMode: BlendMode.srcIn,
+              shaderCallback: (bounds) {
+                return loginGradient.createShader(bounds);
+              },
+              child: const Text(
+                'Welcome Back',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+
             const Text(
               'Access your PeakGym management account.',
               style: TextStyle(
                 color: AppTheme.secondaryText,
-                fontSize: 13,
+                fontSize: 12,
+                height: 1.5,
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 16),
 
-            const Text(
-              'Username',
-              style: TextStyle(
-                color: AppTheme.primaryText,
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 9),
+            _buildFieldLabel('Username'),
             TextFormField(
               controller: _usernameController,
+              readOnly: _isLoading,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.username],
+              autocorrect: false,
+              enableSuggestions: false,
               style: const TextStyle(
                 color: AppTheme.primaryText,
+                fontSize: 14,
               ),
               decoration: const InputDecoration(
+                isDense: true,
                 hintText: 'Enter your username',
-                prefixIcon: Icon(Icons.person_outline),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                prefixIcon: Icon(
+                  Icons.person_outline,
+                  size: 20,
+                ),
+                prefixIconConstraints: BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 44,
+                ),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -322,36 +580,53 @@ class _LoginScreenState extends State<LoginScreen> {
                 return null;
               },
             ),
+            const SizedBox(height: 12),
 
-            const SizedBox(height: 20),
-
-            const Text(
-              'Password',
-              style: TextStyle(
-                color: AppTheme.primaryText,
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 9),
+            _buildFieldLabel('Password'),
             TextFormField(
               controller: _passwordController,
+              readOnly: _isLoading,
               obscureText: !_isPasswordVisible,
+              textInputAction: TextInputAction.done,
+              autofillHints: const [AutofillHints.password],
+              autocorrect: false,
+              enableSuggestions: false,
+              onFieldSubmitted: (_) => _login(),
               style: const TextStyle(
                 color: AppTheme.primaryText,
+                fontSize: 14,
               ),
               decoration: InputDecoration(
+                isDense: true,
                 hintText: 'Enter your password',
-                prefixIcon: const Icon(Icons.lock_outline),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                prefixIcon: const Icon(
+                  Icons.lock_outline,
+                  size: 20,
+                ),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 44,
+                ),
                 suffixIcon: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    });
-                  },
+                  tooltip: _isPasswordVisible
+                      ? 'Hide password'
+                      : 'Show password',
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
                   icon: Icon(
                     _isPasswordVisible
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
+                    size: 20,
                   ),
                 ),
               ),
@@ -363,130 +638,144 @@ class _LoginScreenState extends State<LoginScreen> {
               },
             ),
 
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                SizedBox(
-                  height: 35,
-                  child: Checkbox(
-                    value: _rememberMe,
-                    activeColor: AppTheme.primaryGreen,
-                    onChanged: (value) {
-                      setState(() {
-                        _rememberMe = value ?? false;
-                      });
-                    },
-                  ),
-                ),
-                const Text(
-                  'Remember me',
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _isLoading ? null : () => _openPage('Help'),
+                child: const Text(
+                  'Forgot password?',
                   style: TextStyle(
-                    color: AppTheme.secondaryText,
+                    color: AppTheme.primaryGreen,
                     fontSize: 12,
                   ),
                 ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Please contact your gym administrator '
-                          'for password assistance.',
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Forgot password?',
-                    style: TextStyle(
-                      color: AppTheme.primaryGreen,
+              ),
+            ),
+
+            if (_errorMessage != null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0x22FF6B6B),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0x66FF6B6B),
+                  ),
+                ),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(
+                      color: AppTheme.errorColor,
                       fontSize: 12,
+                      height: 1.4,
                     ),
                   ),
                 ),
-              ],
-            ),
-
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                _errorMessage!,
-                style: const TextStyle(
-                  color: AppTheme.errorColor,
-                  fontSize: 12,
-                ),
               ),
-            ],
-
-            const SizedBox(height: 20),
 
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 46,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      AppTheme.primaryGreen,
-                      Color(0xFF75D69B),
-                      AppTheme.accentYellow,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(7),
+                  gradient: loginGradient,
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
+                  onPressed:
+                      (_isLoading || _lockoutSeconds > 0) ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     disabledBackgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
                     foregroundColor: AppTheme.background,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: _isLoading
-                      ? const SizedBox(
-                          height: 21,
-                          width: 21,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppTheme.background,
-                          ),
+                      ? const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.background,
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Logging in...',
+                              style: TextStyle(
+                                color: AppTheme.background,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         )
                       : const Text(
                           'LOG IN',
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
                             letterSpacing: 1,
                           ),
                         ),
                 ),
               ),
             ),
+            const SizedBox(height: 24),
 
-            const SizedBox(height: 25),
-
-            const Center(
-              child: Text.rich(
-                TextSpan(
-                  style: TextStyle(
-                    color: AppTheme.secondaryText,
-                    fontSize: 12,
-                  ),
-                  children: [
-                    TextSpan(text: 'Need an account? '),
-                    TextSpan(
-                      text: 'Contact your gym administrator.',
-                      style: TextStyle(
-                        color: AppTheme.primaryGreen,
-                      ),
+            Center(
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4,
+                children: [
+                  const Text(
+                    'Need an account?',
+                    style: TextStyle(
+                      color: AppTheme.secondaryText,
+                      fontSize: 11,
+                      height: 1.4,
                     ),
-                  ],
-                ),
-                textAlign: TextAlign.center,
+                  ),
+                  TextButton(
+                    onPressed: _isLoading ? null : () => _openPage('Help'),
+                    onHover: (hovered) {
+                      setState(() {
+                        _isContactHovered = hovered;
+                      });
+                    },
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      backgroundColor: Colors.transparent,
+                      overlayColor: Colors.transparent,
+                      splashFactory: NoSplash.splashFactory,
+                    ),
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 150),
+                      style: TextStyle(
+                        color: _isContactHovered && !_isLoading
+                            ? AppTheme.primaryGreen
+                            : AppTheme.secondaryText,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4,
+                        decoration: TextDecoration.none,
+                      ),
+                      child: const Text('Contact your administrator.'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -495,31 +784,71 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFieldLabel(String label) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 25,
-        vertical: 25,
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppTheme.primaryText,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
       ),
-      child: const Column(
-        children: [
-          Text(
-            '© 2026 PeakGym Fitness. All rights reserved.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppTheme.secondaryText,
-              fontSize: 11,
-            ),
+    );
+  }
+
+  Widget _buildPageFooter() {
+    final copyright = Text(
+      '© ${DateTime.now().year} PeakGym Fitness. All rights reserved.',
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: Color(0xFFB0BAB5),
+        fontSize: 11,
+        height: 1.6,
+      ),
+    );
+
+    const designCredit = Text(
+      'Designed with passion for fitness',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: Color(0xFFB0BAB5),
+        fontSize: 11,
+        height: 1.6,
+      ),
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: 18),
+      decoration: const BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFF39433F),
           ),
-          SizedBox(height: 7),
-          Text(
-            'Designed with passion for fitness.',
-            style: TextStyle(
-              color: AppTheme.secondaryText,
-              fontSize: 11,
-            ),
-          ),
-        ],
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 700) {
+            return Column(
+              children: [
+                copyright,
+                const SizedBox(height: 6),
+                designCredit,
+              ],
+            );
+          }
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              copyright,
+              designCredit,
+            ],
+          );
+        },
       ),
     );
   }

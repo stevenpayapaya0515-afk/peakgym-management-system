@@ -8,14 +8,16 @@ class ApiService {
     String endpoint, {
     Map<String, dynamic>? body,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode(body ?? {}),
-    );
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl$endpoint'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode(body ?? {}),
+        )
+        .timeout(const Duration(seconds: 15));
 
     final data = jsonDecode(response.body);
 
