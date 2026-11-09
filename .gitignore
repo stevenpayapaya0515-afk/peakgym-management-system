@@ -39,3 +39,6 @@ frontend/ios/Flutter/.last_build_id
 .vscode/
 Thumbs.db
 Desktop.ini
+
+backend/gmail_api_test/credentials.json
+backend/gmail_api_test/token.json

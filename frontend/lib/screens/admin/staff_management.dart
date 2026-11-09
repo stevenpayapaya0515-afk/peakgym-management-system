@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
 import '../../core/services/staff_service.dart';
@@ -24,17 +22,11 @@ InputDecoration _staffInputDecoration({String? hint}) {
 
   return InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(
-      color: AppTheme.secondaryText,
-      fontSize: 12,
-    ),
+    hintStyle: const TextStyle(color: AppTheme.secondaryText, fontSize: 12),
     filled: true,
     fillColor: AppTheme.inputBackground,
     isDense: true,
-    contentPadding: const EdgeInsets.symmetric(
-      horizontal: 16,
-      vertical: 17,
-    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
     border: border(AppTheme.borderColor),
     enabledBorder: border(AppTheme.borderColor),
     disabledBorder: border(AppTheme.borderColor),
@@ -59,10 +51,7 @@ Widget _staffPrimaryButton({
       gradient: destructive
           ? null
           : const LinearGradient(
-              colors: [
-                AppTheme.primaryGreen,
-                AppTheme.accentYellow,
-              ],
+              colors: [AppTheme.primaryGreen, AppTheme.accentYellow],
             ),
     ),
     child: TextButton(
@@ -72,13 +61,8 @@ Widget _staffPrimaryButton({
         disabledForegroundColor: Colors.black54,
         minimumSize: const Size(80, 44),
         padding: const EdgeInsets.symmetric(horizontal: 18),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
       ),
       child: loading
           ? const SizedBox(
@@ -110,9 +94,7 @@ Widget _staffCancelButton(VoidCallback? onPressed) {
       foregroundColor: AppTheme.primaryText,
       minimumSize: const Size(80, 44),
       side: const BorderSide(color: AppTheme.borderColor),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       textStyle: const TextStyle(fontSize: 12),
     ),
     child: const Text('Cancel'),
@@ -134,7 +116,7 @@ Widget _staffPageHeader(bool compact) {
       ),
       const SizedBox(height: 12),
       const Text(
-        'Create staff accounts and manage their access.',
+        'Invite staff by email and manage their account access.',
         style: TextStyle(
           color: AppTheme.secondaryText,
           fontSize: 13,
@@ -149,10 +131,7 @@ Widget _staffPageHeader(bool compact) {
 }
 
 class StaffManagement extends StatefulWidget {
-  const StaffManagement({
-    super.key,
-    required this.onChanged,
-  });
+  const StaffManagement({super.key, required this.onChanged});
 
   final Future<void> Function() onChanged;
 
@@ -229,10 +208,7 @@ class _StaffManagementState extends State<StaffManagement> {
         context: context,
         barrierDismissible: false,
         barrierColor: Colors.black.withValues(alpha: 0.70),
-        builder: (_) => _StaffAccountDialog(
-          user: user,
-          delete: delete,
-        ),
+        builder: (_) => _StaffAccountDialog(user: user, delete: delete),
       );
 
       if (!mounted || changed != true) return;
@@ -259,21 +235,14 @@ class _StaffManagementState extends State<StaffManagement> {
 
   Widget _status(Map<String, dynamic> user) {
     final active = _isActive(user);
-    final color = active
-        ? AppTheme.primaryGreen
-        : AppTheme.accentYellow;
+    final color = active ? AppTheme.primaryGreen : AppTheme.accentYellow;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Text(
         active ? 'Active' : 'Inactive',
@@ -292,14 +261,10 @@ class _StaffManagementState extends State<StaffManagement> {
       spacing: 4,
       children: [
         TextButton.icon(
-          onPressed: _dialogOpen
-              ? null
-              : () => _openDialog(user: user),
+          onPressed: _dialogOpen ? null : () => _openDialog(user: user),
           icon: const Icon(Icons.edit_outlined, size: 16),
           label: const Text('Edit'),
-          style: TextButton.styleFrom(
-            foregroundColor: AppTheme.primaryGreen,
-          ),
+          style: TextButton.styleFrom(foregroundColor: AppTheme.primaryGreen),
         ),
         TextButton.icon(
           onPressed: _dialogOpen
@@ -307,9 +272,7 @@ class _StaffManagementState extends State<StaffManagement> {
               : () => _openDialog(user: user, delete: true),
           icon: const Icon(Icons.delete_outline, size: 16),
           label: const Text('Delete'),
-          style: TextButton.styleFrom(
-            foregroundColor: AppTheme.errorColor,
-          ),
+          style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
         ),
       ],
     );
@@ -321,30 +284,26 @@ class _StaffManagementState extends State<StaffManagement> {
       child: TextField(
         controller: _searchController,
         onChanged: (_) => setState(() {}),
-        style: const TextStyle(
-          color: AppTheme.primaryText,
-          fontSize: 12,
-        ),
-        decoration: _staffInputDecoration(
-          hint: 'Search username or email...',
-        ).copyWith(
-          prefixIcon: const Icon(
-            Icons.search,
-            size: 18,
-            color: AppTheme.secondaryText,
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
-          ),
-        ),
+        style: const TextStyle(color: AppTheme.primaryText, fontSize: 12),
+        decoration: _staffInputDecoration(hint: 'Search username or email...')
+            .copyWith(
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 18,
+                color: AppTheme.secondaryText,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+            ),
       ),
     );
   }
 
   Widget _createButton() {
     return _staffPrimaryButton(
-      label: 'Create staff account',
+      label: 'Invite staff',
       icon: Icons.person_add_alt_1,
       onPressed: _loading || _dialogOpen
           ? null
@@ -361,10 +320,7 @@ class _StaffManagementState extends State<StaffManagement> {
         children: [
           _searchField(),
           const SizedBox(height: 14),
-          Align(
-            alignment: Alignment.centerRight,
-            child: _createButton(),
-          ),
+          Align(alignment: Alignment.centerRight, child: _createButton()),
         ],
       );
     }
@@ -388,15 +344,11 @@ class _StaffManagementState extends State<StaffManagement> {
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minWidth: constraints.maxWidth,
-              ),
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
               child: DataTable(
                 dividerThickness: 1,
                 border: const TableBorder(
-                  horizontalInside: BorderSide(
-                    color: AppTheme.borderColor,
-                  ),
+                  horizontalInside: BorderSide(color: AppTheme.borderColor),
                 ),
                 columnSpacing: 26,
                 horizontalMargin: 22,
@@ -413,18 +365,14 @@ class _StaffManagementState extends State<StaffManagement> {
                   DataColumn(label: Text('Email')),
                   DataColumn(label: Text('Status')),
                   DataColumn(
-                    label: Expanded(
-                      child: Center(child: Text('Actions')),
-                    ),
+                    label: Expanded(child: Center(child: Text('Actions'))),
                   ),
                 ],
                 rows: users.map((user) {
                   return DataRow(
                     cells: [
                       DataCell(Text(user['username'].toString())),
-                      DataCell(
-                        Text((user['email'] ?? '').toString()),
-                      ),
+                      DataCell(Text((user['email'] ?? '').toString())),
                       DataCell(_status(user)),
                       DataCell(Center(child: _actions(user))),
                     ],
@@ -459,9 +407,7 @@ class _StaffManagementState extends State<StaffManagement> {
               const SizedBox(height: 6),
               Text(
                 (user['email'] ?? '').toString(),
-                style: const TextStyle(
-                  color: AppTheme.secondaryText,
-                ),
+                style: const TextStyle(color: AppTheme.secondaryText),
               ),
               const SizedBox(height: 12),
               _status(user),
@@ -477,7 +423,7 @@ class _StaffManagementState extends State<StaffManagement> {
   @override
   Widget build(BuildContext context) {
     if (_creatingAccount) {
-      return _CreateStaffPanel(
+      return _InviteStaffPanel(
         onCancel: () {
           setState(() => _creatingAccount = false);
         },
@@ -509,9 +455,7 @@ class _StaffManagementState extends State<StaffManagement> {
               if (_loading)
                 const Padding(
                   padding: EdgeInsets.all(40),
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  child: Center(child: CircularProgressIndicator()),
                 )
               else if (_error != null)
                 Container(
@@ -523,9 +467,7 @@ class _StaffManagementState extends State<StaffManagement> {
                       Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppTheme.errorColor,
-                        ),
+                        style: const TextStyle(color: AppTheme.errorColor),
                       ),
                       const SizedBox(height: 12),
                       TextButton.icon(
@@ -543,12 +485,10 @@ class _StaffManagementState extends State<StaffManagement> {
                   decoration: _staffPanelDecoration(),
                   child: Text(
                     query.isEmpty
-                        ? 'No staff accounts yet. Create one to get started.'
+                        ? 'No staff accounts yet. Invite someone to get started.'
                         : 'No staff accounts match your search.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppTheme.secondaryText,
-                    ),
+                    style: const TextStyle(color: AppTheme.secondaryText),
                   ),
                 )
               else if (compact)
@@ -564,17 +504,13 @@ class _StaffManagementState extends State<StaffManagement> {
 }
 
 class _StaffAccountDialog extends StatefulWidget {
-  const _StaffAccountDialog({
-    required this.user,
-    this.delete = false,
-  });
+  const _StaffAccountDialog({required this.user, this.delete = false});
 
   final Map<String, dynamic> user;
   final bool delete;
 
   @override
-  State<_StaffAccountDialog> createState() =>
-      _StaffAccountDialogState();
+  State<_StaffAccountDialog> createState() => _StaffAccountDialogState();
 }
 
 class _StaffAccountDialogState extends State<_StaffAccountDialog> {
@@ -585,8 +521,7 @@ class _StaffAccountDialogState extends State<_StaffAccountDialog> {
   void initState() {
     super.initState();
 
-    _active = widget.user['is_active'] == true ||
-        widget.user['is_active'] == 1;
+    _active = widget.user['is_active'] == true || widget.user['is_active'] == 1;
   }
 
   Future<void> _save() async {
@@ -649,9 +584,7 @@ class _StaffAccountDialogState extends State<_StaffAccountDialog> {
         title: Text(
           widget.delete ? 'Delete staff account?' : 'Edit staff status',
           style: TextStyle(
-            color: widget.delete
-                ? AppTheme.errorColor
-                : AppTheme.primaryText,
+            color: widget.delete ? AppTheme.errorColor : AppTheme.primaryText,
             fontSize: 22,
             fontWeight: FontWeight.w700,
           ),
@@ -686,10 +619,7 @@ class _StaffAccountDialogState extends State<_StaffAccountDialog> {
                 else ...[
                   const Text(
                     'Status',
-                    style: TextStyle(
-                      color: AppTheme.primaryText,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: AppTheme.primaryText, fontSize: 13),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<bool>(
@@ -702,14 +632,8 @@ class _StaffAccountDialogState extends State<_StaffAccountDialog> {
                     ),
                     decoration: _staffInputDecoration(),
                     items: const [
-                      DropdownMenuItem(
-                        value: true,
-                        child: Text('Active'),
-                      ),
-                      DropdownMenuItem(
-                        value: false,
-                        child: Text('Inactive'),
-                      ),
+                      DropdownMenuItem(value: true, child: Text('Active')),
+                      DropdownMenuItem(value: false, child: Text('Inactive')),
                     ],
                     onChanged: _saving
                         ? null
@@ -739,39 +663,28 @@ class _StaffAccountDialogState extends State<_StaffAccountDialog> {
   }
 }
 
-class _CreateStaffPanel extends StatefulWidget {
-  const _CreateStaffPanel({
-    required this.onCancel,
-    required this.onCreated,
-  });
+class _InviteStaffPanel extends StatefulWidget {
+  const _InviteStaffPanel({required this.onCancel, required this.onCreated});
 
   final VoidCallback onCancel;
   final Future<void> Function() onCreated;
 
   @override
-  State<_CreateStaffPanel> createState() => _CreateStaffPanelState();
+  State<_InviteStaffPanel> createState() => _InviteStaffPanelState();
 }
 
-class _CreateStaffPanelState extends State<_CreateStaffPanel> {
+class _InviteStaffPanelState extends State<_InviteStaffPanel> {
   final _formKey = GlobalKey<FormState>();
-  final _username = TextEditingController();
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  final _confirmPassword = TextEditingController();
-
-  bool _showPasswords = false;
+  final _emailController = TextEditingController();
   bool _saving = false;
 
   @override
   void dispose() {
-    _username.dispose();
-    _email.dispose();
-    _password.dispose();
-    _confirmPassword.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
-  Future<void> _createAccount() async {
+  Future<void> _sendInvitation() async {
     if (_saving || !_formKey.currentState!.validate()) return;
 
     FocusScope.of(context).unfocus();
@@ -779,20 +692,14 @@ class _CreateStaffPanelState extends State<_CreateStaffPanel> {
 
     final success = await ActionFeedback.run(
       context: context,
-      actionKey: 'staff-create',
-      loadingMessage: 'Creating the staff account...',
-      successMessage: 'Staff account created successfully.',
-      action: () async {
-        await StaffService.createStaff(
-          username: _username.text.trim(),
-          email: _email.text.trim(),
-          password: _password.text,
-        );
-      },
+      actionKey: 'staff-invite',
+      loadingMessage: 'Sending the staff invitation...',
+      successMessage: 'Invitation submitted. Ask the staff member to check their email (including Spam).',
+      action: () =>
+          StaffService.inviteStaff(email: _emailController.text.trim()),
     );
 
     if (!mounted) return;
-
     setState(() => _saving = false);
 
     if (success) {
@@ -800,177 +707,11 @@ class _CreateStaffPanelState extends State<_CreateStaffPanel> {
     }
   }
 
-  Widget _field(String label, Widget input) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppTheme.primaryText,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        input,
-      ],
-    );
-  }
-
-  Widget _usernameField() {
-    return _field(
-      'Username',
-      TextFormField(
-        controller: _username,
-        enabled: !_saving,
-        autofocus: true,
-        autocorrect: false,
-        textInputAction: TextInputAction.next,
-        style: const TextStyle(fontSize: 13),
-        decoration: _staffInputDecoration(
-          hint: 'juan.delacruz',
-        ),
-        validator: (value) {
-          final username = value?.trim() ?? '';
-
-          if (!RegExp(r'^[a-zA-Z0-9_.-]{3,50}$').hasMatch(username)) {
-            return 'Use 3–50 letters, numbers, dots, '
-                'underscores, or hyphens.';
-          }
-
-          return null;
-        },
-      ),
-    );
-  }
-
-  Widget _emailField() {
-    return _field(
-      'Email',
-      TextFormField(
-        controller: _email,
-        enabled: !_saving,
-        keyboardType: TextInputType.emailAddress,
-        textInputAction: TextInputAction.next,
-        autocorrect: false,
-        style: const TextStyle(fontSize: 13),
-        decoration: _staffInputDecoration(
-          hint: 'juan.delacruz@peakgym.com',
-        ),
-        validator: (value) {
-          final email = value?.trim() ?? '';
-
-          if (email.length > 100 ||
-              !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-            return 'Enter a valid email, up to 100 characters.';
-          }
-
-          return null;
-        },
-      ),
-    );
-  }
-
-  Widget _passwordField() {
-    return _field(
-      'Password',
-      TextFormField(
-        controller: _password,
-        enabled: !_saving,
-        obscureText: !_showPasswords,
-        autocorrect: false,
-        enableSuggestions: false,
-        autofillHints: const [AutofillHints.newPassword],
-        textInputAction: TextInputAction.next,
-        style: const TextStyle(fontSize: 13),
-        decoration: _staffInputDecoration(),
-        validator: (value) {
-          final password = value ?? '';
-
-          if (password.length < 12) {
-            return 'Use at least 12 characters.';
-          }
-
-          if (utf8.encode(password).length > 72) {
-            return 'Password exceeds 72 bytes.';
-          }
-
-          return null;
-        },
-      ),
-    );
-  }
-
-  Widget _confirmPasswordField() {
-    return _field(
-      'Confirm password',
-      TextFormField(
-        controller: _confirmPassword,
-        enabled: !_saving,
-        obscureText: !_showPasswords,
-        autocorrect: false,
-        enableSuggestions: false,
-        textInputAction: TextInputAction.done,
-        onFieldSubmitted: (_) => _createAccount(),
-        style: const TextStyle(fontSize: 13),
-        decoration: _staffInputDecoration(),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Confirm your password.';
-          }
-
-          if (value != _password.text) {
-            return 'Passwords do not match.';
-          }
-
-          return null;
-        },
-      ),
-    );
-  }
-
-  Widget _formFields() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final twoColumns = constraints.maxWidth >= 600;
-
-        final fieldWidth = twoColumns
-            ? (constraints.maxWidth - 20) / 2
-            : constraints.maxWidth;
-
-        return Wrap(
-          spacing: 20,
-          runSpacing: 20,
-          children: [
-            SizedBox(
-              width: fieldWidth,
-              child: _usernameField(),
-            ),
-            SizedBox(
-              width: fieldWidth,
-              child: _emailField(),
-            ),
-            SizedBox(
-              width: fieldWidth,
-              child: _passwordField(),
-            ),
-            SizedBox(
-              width: fieldWidth,
-              child: _confirmPasswordField(),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 700;
-
         return SingleChildScrollView(
           padding: EdgeInsets.all(compact ? 22 : 42),
           child: Column(
@@ -981,85 +722,97 @@ class _CreateStaffPanelState extends State<_CreateStaffPanel> {
                 width: double.infinity,
                 padding: EdgeInsets.all(compact ? 20 : 30),
                 decoration: _staffPanelDecoration(),
-                child: AutofillGroup(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Create staff account',
-                          style: TextStyle(
-                            color: AppTheme.primaryText,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                          ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Invite a staff member',
+                        style: TextStyle(
+                          color: AppTheme.primaryText,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
                         ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          "Enter the staff member's account details.",
-                          style: TextStyle(
-                            color: AppTheme.secondaryText,
-                            fontSize: 13,
-                            height: 1.5,
-                          ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Enter the staff member’s email address. '
+                        'They will receive a registration link and set '
+                        'their own password after verification.',
+                        style: TextStyle(
+                          color: AppTheme.secondaryText,
+                          fontSize: 13,
+                          height: 1.6,
                         ),
-                        const SizedBox(height: 26),
-                        _formFields(),
-                        const SizedBox(height: 14),
-                        const Text(
-                          'Use a long, unique password with at least '
-                          '12 characters.',
-                          style: TextStyle(
-                            color: AppTheme.secondaryText,
-                            fontSize: 11,
-                            height: 1.5,
-                          ),
+                      ),
+                      const SizedBox(height: 28),
+                      const Text(
+                        'Staff email address',
+                        style: TextStyle(
+                          color: AppTheme.primaryText,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(height: 4),
-                        CheckboxListTile(
-                          contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          dense: true,
-                          activeColor: AppTheme.primaryGreen,
-                          title: const Text(
-                            'Show passwords',
-                            style: TextStyle(
-                              color: AppTheme.secondaryText,
-                              fontSize: 12,
+                      ),
+                      const SizedBox(height: 8),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 520),
+                        child: TextFormField(
+                          controller: _emailController,
+                          enabled: !_saving,
+                          autofocus: true,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _sendInvitation(),
+                          style: const TextStyle(fontSize: 13),
+                          decoration: _staffInputDecoration(
+                            hint: 'staff@example.com',
+                          ),
+                          validator: (value) {
+                            final email = value?.trim() ?? '';
+                            if (email.isEmpty ||
+                                email.length > 100 ||
+                                !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                    .hasMatch(email)) {
+                              return 'Enter a valid email address (max 100 characters).';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Invitations expire after 24 hours. '
+                        'A maximum of three invitations per address '
+                        'can be requested in one hour.',
+                        style: TextStyle(
+                          color: AppTheme.secondaryText,
+                          fontSize: 12,
+                          height: 1.6,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Wrap(
+                          alignment: WrapAlignment.end,
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            _staffCancelButton(
+                              _saving ? null : widget.onCancel,
                             ),
-                          ),
-                          value: _showPasswords,
-                          onChanged: _saving
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _showPasswords = value ?? false;
-                                  });
-                                },
+                            _staffPrimaryButton(
+                              label: 'Send invitation',
+                              icon: Icons.mail_outline,
+                              onPressed: _saving ? null : _sendInvitation,
+                              loading: _saving,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Wrap(
-                            alignment: WrapAlignment.end,
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              _staffCancelButton(
-                                _saving ? null : widget.onCancel,
-                              ),
-                              _staffPrimaryButton(
-                                label: 'Create account',
-                                onPressed:
-                                    _saving ? null : _createAccount,
-                                loading: _saving,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),

@@ -10,6 +10,7 @@ class StaffService {
     String method,
     String path, {
     Map<String, dynamic>? body,
+    Map<String, String>? extraHeaders,
   }) async {
     final token = await TokenStorage.getToken();
 
@@ -26,6 +27,7 @@ class StaffService {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
+      ...?extraHeaders,
     });
 
     if (body != null) {
@@ -62,19 +64,20 @@ class StaffService {
       final detail = data is Map ? data['detail'] : null;
 
       if (detail is List) {
-        final messages = detail.map((item) {
-          if (item is Map) {
-            return item['msg']?.toString() ?? 'Invalid input.';
-          }
-          return item.toString();
-        }).join('\n');
+        final messages = detail
+            .map((item) {
+              if (item is Map) {
+                return item['msg']?.toString() ?? 'Invalid input.';
+              }
+              return item.toString();
+            })
+            .join('\n');
 
         throw Exception(messages);
       }
 
       throw Exception(
-        detail?.toString() ??
-            'Request failed (${response.statusCode}).',
+        detail?.toString() ?? 'Request failed (${response.statusCode}).',
       );
     } finally {
       client.close();
@@ -94,6 +97,24 @@ class StaffService {
         .toList();
   }
 
+  /// Admin-only: get a one-time CSRF token, then email a staff invitation.
+  /// No password is created here; staff provide their own during registration.
+  static Future<void> inviteStaff({required String email}) async {
+    final csrfData = await _request('GET', '/invitations/csrf');
+    if (csrfData is! Map ||
+        csrfData['csrf_token'] is! String ||
+        (csrfData['csrf_token'] as String).isEmpty) {
+      throw Exception('Unable to obtain the invitation security token.');
+    }
+
+    await _request(
+      'POST',
+      '/invitations/',
+      extraHeaders: {'X-CSRF-Token': csrfData['csrf_token'] as String},
+      body: {'email': email.trim().toLowerCase()},
+    );
+  }
+
   static Future<void> createStaff({
     required String username,
     required String email,
@@ -102,20 +123,13 @@ class StaffService {
     await _request(
       'POST',
       '/users/',
-      body: {
-        'username': username,
-        'email': email,
-        'password': password,
-      },
+      body: {'username': username, 'email': email, 'password': password},
     );
   }
 
   static Future<void> changeStatus(int id, bool active) async {
     // FastAPI expects is_active as a query parameter.
-    await _request(
-      'PATCH',
-      '/users/$id/status?is_active=$active',
-    );
+    await _request('PATCH', '/users/$id/status?is_active=$active');
   }
 
   static Future<void> deleteStaff(int id) async {

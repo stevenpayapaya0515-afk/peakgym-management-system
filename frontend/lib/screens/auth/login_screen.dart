@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import 'register_screen.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/storage/token_storage.dart';
 import '../../core/theme/app_theme.dart';
@@ -9,10 +12,11 @@ import '../public/about_screen.dart';
 import '../public/security_screen.dart';
 import '../public/help_screen.dart';
 import '../staff/staff_dashboard.dart';
-import 'dart:async';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.initialInvitationToken});
+
+  final String? initialInvitationToken;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -25,14 +29,31 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  bool _isContactHovered = false;
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   String? _errorMessage;
 
+  bool _showRegistration = false;
+  String _invitationToken = '';
+
   Timer? _lockoutTimer;
   DateTime? _lockoutEndsAt;
   int _lockoutSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final uri = Uri.base;
+
+    if (widget.initialInvitationToken != null) {
+      _invitationToken = widget.initialInvitationToken!;
+      _showRegistration = true;
+    } else if (uri.path == '/register') {
+      _invitationToken = uri.queryParameters['invite'] ?? '';
+      _showRegistration = true;
+    }
+  }
 
   @override
   void dispose() {
@@ -40,6 +61,23 @@ class _LoginScreenState extends State<LoginScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _openRegistration() {
+    if (_isLoading) return;
+
+    setState(() {
+      _showRegistration = true;
+    });
+  }
+
+  void _returnToLogin() {
+    if (!mounted) return;
+
+    setState(() {
+      _showRegistration = false;
+      _errorMessage = null;
+    });
   }
 
   void _startLockoutCountdown(int seconds) {
@@ -61,8 +99,10 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      final milliseconds =
-          _lockoutEndsAt!.difference(DateTime.now()).inMilliseconds;
+      final milliseconds = _lockoutEndsAt!
+          .difference(DateTime.now())
+          .inMilliseconds;
+
       final remaining = (milliseconds / 1000).ceil();
 
       if (remaining <= 0) {
@@ -73,6 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
           _lockoutEndsAt = null;
           _errorMessage = null;
         });
+
         return;
       }
 
@@ -104,8 +145,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (response['status_code'] != 200) {
-        final message = response['detail']?.toString() ??
-            'Login failed. Please try again.';
+        final message =
+            response['detail']?.toString() ?? 'Login failed. Please try again.';
 
         final match = RegExp(
           r'try again in (\d+) seconds?',
@@ -128,12 +169,11 @@ class _LoginScreenState extends State<LoginScreen> {
       final token = response['access_token'];
       final user = response['user'];
 
-      if (token is! String ||
-          token.isEmpty ||
-          user is! Map<String, dynamic>) {
+      if (token is! String || token.isEmpty || user is! Map<String, dynamic>) {
         setState(() {
           _errorMessage = 'Invalid response from the server.';
         });
+
         return;
       }
 
@@ -147,9 +187,9 @@ class _LoginScreenState extends State<LoginScreen> {
         destination = const StaffDashboard();
       } else {
         setState(() {
-          _errorMessage =
-              'This account does not have a supported role.';
+          _errorMessage = 'This account does not have a supported role.';
         });
+
         return;
       }
 
@@ -157,11 +197,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => destination,
-        ),
-      );
+      Navigator.of(context)
+          .pushReplacement(MaterialPageRoute(builder: (_) => destination));
     } catch (_) {
       if (!mounted) return;
 
@@ -196,9 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => screen),
-    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
   @override
@@ -206,9 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.background,
-      drawer: PublicNavigation(
-        onSelected: _openPage,
-      ),
+      drawer: PublicNavigation(onSelected: _openPage),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -224,13 +257,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     : Alignment.center,
                 excludeFromSemantics: true,
                 errorBuilder: (context, error, stackTrace) {
-                  return const ColoredBox(
-                    color: AppTheme.background,
-                  );
+                  return const ColoredBox(color: AppTheme.background);
                 },
               );
             },
           ),
+
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -245,19 +277,18 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: RadialGradient(
                 center: Alignment.bottomLeft,
                 radius: 1.1,
-                colors: [
-                  Color(0x3300C9A7),
-                  Colors.transparent,
-                ],
+                colors: [Color(0x3300C9A7), Colors.transparent],
               ),
             ),
           ),
-          // Fade the lower background on mobile.
+
+          // Original mobile background fade.
           LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth >= 960) {
@@ -283,6 +314,7 @@ class _LoginScreenState extends State<LoginScreen> {
               );
             },
           ),
+
           SafeArea(
             child: Column(
               children: [
@@ -290,6 +322,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: _buildNavigation(),
                 ),
+
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -323,6 +356,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     child: _buildContent(isDesktop),
                                   ),
                                 ),
+
                                 Padding(
                                   padding: const EdgeInsets.only(top: 16),
                                   child: Center(
@@ -355,19 +389,14 @@ class _LoginScreenState extends State<LoginScreen> {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            child: _buildIntroduction(compact: false),
-          ),
+          Expanded(child: _buildIntroduction(compact: false)),
           const SizedBox(width: 56),
-          SizedBox(
-            width: 420,
-            child: _buildLoginBox(),
-          ),
+          SizedBox(width: 420, child: _buildLoginBox()),
         ],
       );
     }
 
-    // Mobile: login box only, without the introduction.
+    // Original mobile layout: card only.
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
@@ -383,19 +412,14 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: BoxDecoration(
           color: AppTheme.cardBackground,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppTheme.borderColor,
-          ),
+          border: Border.all(color: AppTheme.borderColor),
         ),
         child: IconButton(
           tooltip: 'Open navigation menu',
           onPressed: _isLoading
               ? null
               : () => _scaffoldKey.currentState?.openDrawer(),
-          icon: const Icon(
-            Icons.menu_rounded,
-            color: AppTheme.primaryText,
-          ),
+          icon: const Icon(Icons.menu_rounded, color: AppTheme.primaryText),
         ),
       ),
     );
@@ -415,7 +439,9 @@ class _LoginScreenState extends State<LoginScreen> {
             letterSpacing: 2.5,
           ),
         ),
+
         const SizedBox(height: 20),
+
         Text(
           'Manage your gym.',
           style: TextStyle(
@@ -426,7 +452,9 @@ class _LoginScreenState extends State<LoginScreen> {
             height: 1.1,
           ),
         ),
+
         const SizedBox(height: 6),
+
         Text(
           'Keep it moving.',
           style: TextStyle(
@@ -437,21 +465,22 @@ class _LoginScreenState extends State<LoginScreen> {
             height: 1.1,
           ),
         ),
+
         const SizedBox(height: 24),
+
         Container(
           width: 80,
           height: 4,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(4),
             gradient: const LinearGradient(
-              colors: [
-                AppTheme.primaryGreen,
-                AppTheme.accentYellow,
-              ],
+              colors: [AppTheme.primaryGreen, AppTheme.accentYellow],
             ),
           ),
         ),
+
         const SizedBox(height: 22),
+
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
           child: const Text(
@@ -468,6 +497,8 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // ORIGINAL LOGIN CARD DESIGN.
+  // Only its child switches to registration when requested.
   Widget _buildLoginBox() {
     return Container(
       width: double.infinity,
@@ -475,9 +506,7 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: BoxDecoration(
         color: const Color(0xF2131719),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFF39433F),
-        ),
+        border: Border.all(color: const Color(0xFF39433F)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x66000000),
@@ -486,17 +515,28 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-      child: _buildLoginForm(),
+      child: _showRegistration
+          ? ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: (MediaQuery.sizeOf(context).height * 0.72).clamp(
+                  280.0,
+                  680.0,
+                ),
+              ),
+              child: RegisterScreen(
+                key: ValueKey(_invitationToken),
+                invitationToken: _invitationToken,
+                embedded: true,
+                onBackToLogin: _returnToLogin,
+              ),
+            )
+          : _buildLoginForm(),
     );
   }
 
   Widget _buildLoginForm() {
     const loginGradient = LinearGradient(
-      colors: [
-        AppTheme.primaryGreen,
-        Color(0xFF75D69B),
-        AppTheme.accentYellow,
-      ],
+      colors: [AppTheme.primaryGreen, Color(0xFF75D69B), AppTheme.accentYellow],
     );
 
     return AutofillGroup(
@@ -506,6 +546,7 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // SAME ORIGINAL PEAKGYM LOGO.
             Center(
               child: Image.asset(
                 'assets/logo_peak.png',
@@ -515,9 +556,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 semanticLabel: 'PeakGym logo',
               ),
             ),
+
             const SizedBox(height: 15),
 
-            // Same gradient as the login button.
             ShaderMask(
               blendMode: BlendMode.srcIn,
               shaderCallback: (bounds) {
@@ -533,6 +574,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
+
             const SizedBox(height: 4),
 
             const Text(
@@ -543,9 +585,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 1.5,
               ),
             ),
+
             const SizedBox(height: 16),
 
             _buildFieldLabel('Username'),
+
             TextFormField(
               controller: _usernameController,
               readOnly: _isLoading,
@@ -553,10 +597,7 @@ class _LoginScreenState extends State<LoginScreen> {
               autofillHints: const [AutofillHints.username],
               autocorrect: false,
               enableSuggestions: false,
-              style: const TextStyle(
-                color: AppTheme.primaryText,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: AppTheme.primaryText, fontSize: 14),
               decoration: const InputDecoration(
                 isDense: true,
                 hintText: 'Enter your username',
@@ -564,10 +605,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   horizontal: 12,
                   vertical: 12,
                 ),
-                prefixIcon: Icon(
-                  Icons.person_outline,
-                  size: 20,
-                ),
+                prefixIcon: Icon(Icons.person_outline, size: 20),
                 prefixIconConstraints: BoxConstraints(
                   minWidth: 40,
                   minHeight: 44,
@@ -580,9 +618,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 return null;
               },
             ),
+
             const SizedBox(height: 12),
 
             _buildFieldLabel('Password'),
+
             TextFormField(
               controller: _passwordController,
               readOnly: _isLoading,
@@ -592,10 +632,7 @@ class _LoginScreenState extends State<LoginScreen> {
               autocorrect: false,
               enableSuggestions: false,
               onFieldSubmitted: (_) => _login(),
-              style: const TextStyle(
-                color: AppTheme.primaryText,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: AppTheme.primaryText, fontSize: 14),
               decoration: InputDecoration(
                 isDense: true,
                 hintText: 'Enter your password',
@@ -603,10 +640,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   horizontal: 12,
                   vertical: 12,
                 ),
-                prefixIcon: const Icon(
-                  Icons.lock_outline,
-                  size: 20,
-                ),
+                prefixIcon: const Icon(Icons.lock_outline, size: 20),
                 prefixIconConstraints: const BoxConstraints(
                   minWidth: 40,
                   minHeight: 44,
@@ -644,10 +678,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _isLoading ? null : () => _openPage('Help'),
                 child: const Text(
                   'Forgot password?',
-                  style: TextStyle(
-                    color: AppTheme.primaryGreen,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: AppTheme.primaryGreen, fontSize: 12),
                 ),
               ),
             ),
@@ -660,9 +691,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0x22FF6B6B),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0x66FF6B6B),
-                  ),
+                  border: Border.all(color: const Color(0x66FF6B6B)),
                 ),
                 child: Semantics(
                   liveRegion: true,
@@ -686,8 +715,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: ElevatedButton(
-                  onPressed:
-                      (_isLoading || _lockoutSeconds > 0) ? null : _login,
+                  onPressed: (_isLoading || _lockoutSeconds > 0)
+                      ? null
+                      : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     disabledBackgroundColor: Colors.transparent,
@@ -730,6 +760,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
+
             const SizedBox(height: 24),
 
             Center(
@@ -739,7 +770,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 spacing: 4,
                 children: [
                   const Text(
-                    'Need an account?',
+                    'Invited by your administrator?',
                     style: TextStyle(
                       color: AppTheme.secondaryText,
                       fontSize: 11,
@@ -747,12 +778,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: _isLoading ? null : () => _openPage('Help'),
-                    onHover: (hovered) {
-                      setState(() {
-                        _isContactHovered = hovered;
-                      });
-                    },
+                    onPressed: _isLoading ? null : _openRegistration,
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
                       minimumSize: Size.zero,
@@ -761,18 +787,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       overlayColor: Colors.transparent,
                       splashFactory: NoSplash.splashFactory,
                     ),
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 150),
+                    child: const Text(
+                      'Register here',
                       style: TextStyle(
-                        color: _isContactHovered && !_isLoading
-                            ? AppTheme.primaryGreen
-                            : AppTheme.secondaryText,
+                        color: AppTheme.primaryGreen,
                         fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
+                        fontWeight: FontWeight.w600,
                         decoration: TextDecoration.none,
                       ),
-                      child: const Text('Contact your administrator.'),
                     ),
                   ),
                 ],
@@ -812,41 +834,26 @@ class _LoginScreenState extends State<LoginScreen> {
     const designCredit = Text(
       'Designed with passion for fitness',
       textAlign: TextAlign.center,
-      style: TextStyle(
-        color: Color(0xFFB0BAB5),
-        fontSize: 11,
-        height: 1.6,
-      ),
+      style: TextStyle(color: Color(0xFFB0BAB5), fontSize: 11, height: 1.6),
     );
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(top: 18),
       decoration: const BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: Color(0xFF39433F),
-          ),
-        ),
+        border: Border(top: BorderSide(color: Color(0xFF39433F))),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth < 700) {
             return Column(
-              children: [
-                copyright,
-                const SizedBox(height: 6),
-                designCredit,
-              ],
+              children: [copyright, const SizedBox(height: 6), designCredit],
             );
           }
 
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              copyright,
-              designCredit,
-            ],
+            children: [copyright, designCredit],
           );
         },
       ),
