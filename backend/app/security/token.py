@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
 
 import jwt
 from dotenv import load_dotenv
@@ -35,3 +37,20 @@ def decode_access_token(token: str) -> dict:
         SECRET_KEY,
         algorithms=[ALGORITHM]
     )
+
+
+
+# =====================================
+# PASSWORD-BOUND JWT VERSION
+# =====================================
+
+def password_token_stamp(password_hash: str) -> str:
+    """
+    Generate a JWT validation stamp using
+    the account's current password hash.
+    """
+    return hmac.new(
+        SECRET_KEY.encode("utf-8"),
+        password_hash.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()

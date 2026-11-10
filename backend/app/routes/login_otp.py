@@ -27,6 +27,7 @@ from fastapi.responses import JSONResponse
 from fastapi import Request
 from app.security.activity_logger import record_security_event
 from app.security.login_alerts import send_login_lockout_alert
+from app.security.token import create_access_token, password_token_stamp
 
 
 
@@ -425,7 +426,8 @@ def verify_login_otp(
     access_token = create_access_token({
         "sub": str(user.id),
         "role": user.role,
-        "amr": ["pwd", "otp"]
+        "amr": ["pwd", "otp"],
+        "pwdv": password_token_stamp(user.password),
     })
 
     return {

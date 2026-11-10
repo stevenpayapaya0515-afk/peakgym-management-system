@@ -16,6 +16,8 @@ from app.security.token import decode_access_token
 from app.security.password import verify_password
 from app.security.token import create_access_token
 from app.security.captcha import create_captcha_challenge
+import hmac
+from app.security.token import password_token_stamp
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -59,10 +61,24 @@ def get_current_user(
             detail="User not found"
         )
 
-    if user.role == "staff" and not user.is_active:
+    if not user.is_active:
         raise HTTPException(
             status_code=403,
             detail="This account is inactive"
+        )
+
+    # Reject tokens issued before the latest password change.
+    token_stamp = payload.get("pwdv")
+    expected_stamp = password_token_stamp(user.password)
+
+    if (
+        not isinstance(token_stamp, str)
+        or not hmac.compare_digest(token_stamp, expected_stamp)
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Your session is no longer valid. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return user
