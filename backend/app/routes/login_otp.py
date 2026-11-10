@@ -24,6 +24,8 @@ from app.security.policy import (
 from app.security.token import create_access_token
 from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
+from fastapi import Request
+from app.security.activity_logger import record_security_event
 
 from app.security.login_alerts import send_login_lockout_alert
 
@@ -57,6 +59,7 @@ class LoginVerifyRequest(BaseModel):
 @router.post("/login/start")
 def start_login(
     data: LoginStartRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
@@ -123,6 +126,30 @@ def start_login(
             )
         else:
             user.locked_until = None
+        
+        # Record every incorrect password attempt.
+        record_security_event(
+            db,
+            event_type="login_failed",
+            request=request,
+            user_id=user.id,
+            username_typed=user.username,
+            details=f"Failed password attempt {failures}",
+        )
+
+        # Record a separate security event at each lockout tier.
+        if failures in (3, 6, 9) and lock_seconds:
+            record_security_event(
+                db,
+                event_type="account_locked",
+                request=request,
+                user_id=user.id,
+                username_typed=user.username,
+                details=(
+                    f"Failed attempts: {failures}; "
+                    f"Lockout duration: {lock_seconds} seconds"
+                ),
+            )
 
         db.commit()
 
