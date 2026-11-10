@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/storage/token_storage.dart';
 import '../../core/theme/app_theme.dart';
@@ -43,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
 
   bool _showRegistration = false;
+  bool _showForgotPassword = false;
   String _invitationToken = '';
 
   Timer? _lockoutTimer;
@@ -137,6 +139,24 @@ class _LoginScreenState extends State<LoginScreen> {
       _otpMode = false;
       _errorMessage = null;
       _otpController.clear();
+    });
+    _refreshLoginCaptcha();
+  }
+
+  void _openForgotPassword() {
+    if (_isLoading) return;
+    setState(() {
+      _showForgotPassword = true;
+      _errorMessage = null;
+    });
+  }
+
+  void _returnFromForgotPassword() {
+    if (!mounted) return;
+    setState(() {
+      _showForgotPassword = false;
+      _errorMessage = null;
+      _passwordController.clear();
     });
     _refreshLoginCaptcha();
   }
@@ -485,8 +505,8 @@ class _LoginScreenState extends State<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(child: _buildIntroduction(compact: false)),
-          const SizedBox(width: 64),
-          SizedBox(width: 430, child: _buildLoginBox()),
+          const SizedBox(width: 56),
+          SizedBox(width: 420, child: _buildLoginBox()),
         ],
       );
     }
@@ -624,9 +644,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   onBackToLogin: _returnToLogin,
                 ),
               )
-            : _otpMode
-                ? _buildLoginOtpForm()
-                : _buildLoginForm(),
+            : _showForgotPassword
+                ? ForgotPasswordScreen(
+                    onBackToLogin: _returnFromForgotPassword,
+                  )
+                : _otpMode
+                    ? _buildLoginOtpForm()
+                    : _buildLoginForm(),
       ),
     );
   }
@@ -1051,7 +1075,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: _isLoading ? null : () => _openPage('Help'),
+                  onPressed: _isLoading ? null : _openForgotPassword,
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 0),
                     minimumSize: const Size(0, 32),

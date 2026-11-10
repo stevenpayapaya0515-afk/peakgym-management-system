@@ -16,7 +16,7 @@ from app.routes.invitations import router as invitations_router
 from app.routes.registration import router as registration_router
 from app.routes.registration_activation import router as registration_activation_router
 from app.routes.security_dashboard import router as security_dashboard_router
-
+from app.routes.password_recovery import router as password_recovery_router
 
 
 app = FastAPI(
@@ -47,6 +47,7 @@ app.include_router(invitations_router)
 app.include_router(registration_router)
 app.include_router(registration_activation_router)
 app.include_router(security_dashboard_router)
+app.include_router(password_recovery_router)
 
 @app.get("/")
 def root():
