@@ -26,7 +26,12 @@ from app.security.captcha import verify_captcha
 from app.security.email_service import send_otp_email
 from app.security.login_alerts import send_login_lockout_alert
 from app.security.otp import generate_otp, hash_otp, verify_otp
-from app.security.password import hash_password, validate_password, verify_password
+from app.security.password import validate_password, verify_password
+from app.security.password_history import (
+    REUSE_ERROR,
+    is_recent_password,
+    set_password_with_history,
+)
 from app.security.policy import (
     LOCKOUT_TIERS,
     OTP_EXPIRY_MINUTES,
@@ -466,12 +471,14 @@ def complete_password_reset(
     if not valid:
         db.rollback()
         raise HTTPException(422, validation_message)
-    if verify_password(new_password, user.password):
+    # Enforce the same recent-password policy used by Staff Settings.
+    # The user row is locked by _check_gate, so this check is serialized.
+    if is_recent_password(db, user, new_password):
         db.rollback()
-        raise HTTPException(422, "Choose a password different from the current one.")
+        raise HTTPException(422, REUSE_ERROR)
 
     now = utc_now()
-    user.password = hash_password(new_password)
+    set_password_with_history(db, user, new_password)
     user.failed_attempts = 0
     user.locked_until = None
     user.password_change_attempts = 0

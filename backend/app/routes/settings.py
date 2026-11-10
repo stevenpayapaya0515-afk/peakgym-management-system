@@ -10,7 +10,12 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from app.routes.auth import get_current_user
-from app.security.password import hash_password, verify_password
+from app.security.password import verify_password
+from app.security.password_history import (
+    REUSE_ERROR,
+    is_recent_password,
+    set_password_with_history,
+)
 
 
 router = APIRouter(
@@ -162,16 +167,13 @@ def change_password(
                 detail="Your current password is incorrect."
             )
 
-        if data.new_password == data.current_password:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    "Choose a password different "
-                    "from your current password."
-                )
-            )
+        # The current password and its last two predecessors are prohibited.
+        # The account row is locked above, so competing changes cannot bypass
+        # this comparison or corrupt history.
+        if is_recent_password(db, user, data.new_password):
+            raise HTTPException(status_code=422, detail=REUSE_ERROR)
 
-        user.password = hash_password(data.new_password)
+        set_password_with_history(db, user, data.new_password)
         user.password_change_attempts = 0
         user.password_change_locked_until = None
 

@@ -13,6 +13,7 @@ from app.models.csrf_token import CSRFToken
 from app.models.user_session import UserSession
 from app.models.staff_profile import StaffProfile
 from app.models.pending_registration import PendingStaffRegistration
+from app.models.password_history import PasswordHistory
 
 __all__ = [
     "User",
@@ -26,5 +27,6 @@ __all__ = [
     "CSRFToken",
     "UserSession",
     "StaffProfile",
-    "PendingStaffRegistration"
+    "PendingStaffRegistration",
+    "PasswordHistory"
 ]
