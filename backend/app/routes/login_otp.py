@@ -26,8 +26,8 @@ from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi import Request
 from app.security.activity_logger import record_security_event
-
 from app.security.login_alerts import send_login_lockout_alert
+
 
 
 router = APIRouter(
@@ -295,6 +295,7 @@ def start_login(
 @router.post("/login/verify-otp")
 def verify_login_otp(
     data: LoginVerifyRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     user = (
@@ -361,12 +362,22 @@ def verify_login_otp(
             "Invalid or expired login code."
         )
 
-    # OTP must be consumed before a JWT is issued.
     otp.consumed_at = now
     user.failed_attempts = 0
     user.locked_until = None
 
+    # Record successful password + Gmail OTP authentication.
+    record_security_event(
+        db,
+        event_type="login_success",
+        request=request,
+        user_id=user.id,
+        username_typed=user.username,
+        details="Password and email OTP verified successfully",
+    )
+
     db.commit()
+
 
     access_token = create_access_token({
         "sub": str(user.id),
