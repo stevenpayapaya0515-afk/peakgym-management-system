@@ -983,7 +983,7 @@ class _LoginScreenState extends State<LoginScreen> {
             _buildFieldLabel('Username'),
             TextFormField(
               controller: _usernameController,
-              readOnly: _isLoading,
+              readOnly: false,
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.username],
               autocorrect: false,
@@ -1018,7 +1018,7 @@ class _LoginScreenState extends State<LoginScreen> {
             _buildFieldLabel('Password'),
             TextFormField(
               controller: _passwordController,
-              readOnly: _isLoading,
+              readOnly: false,
               obscureText: !_isPasswordVisible,
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.password],
