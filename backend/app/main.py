@@ -15,6 +15,7 @@ from app.routes.settings import router as settings_router
 from app.routes.invitations import router as invitations_router
 from app.routes.registration import router as registration_router
 from app.routes.registration_activation import router as registration_activation_router
+from app.routes.security_dashboard import router as security_dashboard_router
 
 
 
@@ -45,6 +46,7 @@ app.include_router(settings_router)
 app.include_router(invitations_router)
 app.include_router(registration_router)
 app.include_router(registration_activation_router)
+app.include_router(security_dashboard_router)
 
 @app.get("/")
 def root():

@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import 'staff_management.dart';
 import 'monthly_members.dart';
+import 'security_monitoring.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -284,6 +285,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       'Dashboard',
       'Staff Management',
       'Monthly Members',
+      'Security Monitoring',
     ];
 
     if (!availablePages.contains(page) || page == _selectedPage) {
@@ -425,6 +427,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         _buildNavigationItem(
                           Icons.card_membership_outlined,
                           'Monthly Members',
+                        ),
+                        _buildNavigationItem(
+                          Icons.shield_outlined,
+                          'Security Monitoring',
                         ),
                       ],
                     ),
@@ -686,6 +692,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 value: 'Monthly Members',
                 child: Text('Monthly Members'),
               ),
+              PopupMenuItem<String>(
+                value: 'Security Monitoring',
+                child: Text('Security Monitoring'),
+              ),
             ],
           ),
           IconButton(
@@ -700,6 +710,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildMainContent(bool isMobile) {
+    if (_selectedPage == 'Security Monitoring') {
+      return const SecurityMonitoring();
+    }
+
     if (_selectedPage == 'Monthly Members') {
       return MonthlyMembers(
         onChanged: _loadDashboard,
