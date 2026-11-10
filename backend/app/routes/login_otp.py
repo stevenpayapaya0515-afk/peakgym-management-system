@@ -22,6 +22,10 @@ from app.security.policy import (
     OTP_RESEND_WINDOW_MINUTES,
 )
 from app.security.token import create_access_token
+from fastapi import BackgroundTasks
+from fastapi.responses import JSONResponse
+
+from app.security.login_alerts import send_login_lockout_alert
 
 
 router = APIRouter(
@@ -53,7 +57,8 @@ class LoginVerifyRequest(BaseModel):
 @router.post("/login/start")
 def start_login(
     data: LoginStartRequest,
-    db: Session = Depends(get_db)
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ):
     if not verify_captcha(
         db,
@@ -121,14 +126,36 @@ def start_login(
 
         db.commit()
 
+
         if lock_seconds:
-            raise HTTPException(
-                429,
-                f"Account locked for {lock_seconds} seconds.",
-                headers={"Retry-After": str(lock_seconds)}
+            # Send an alert at the required lockout thresholds.
+            if failures in (3, 6, 9):
+                background_tasks.add_task(
+                    send_login_lockout_alert,
+                    email=user.email,
+                    username=user.username,
+                    attempts=failures,
+                    lockout_seconds=lock_seconds,
+                )
+
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": (
+                        f"Account locked for {lock_seconds} seconds."
+                    )
+                },
+                headers={
+                    "Retry-After": str(lock_seconds)
+                },
+                background=background_tasks,
             )
 
-        raise HTTPException(401, "Invalid username or password.")
+        raise HTTPException(
+            401,
+            "Invalid username or password."
+        )
+
 
     now = utc_now()
 
