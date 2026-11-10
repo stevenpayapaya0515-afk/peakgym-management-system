@@ -31,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final FocusNode _passwordFocusNode = FocusNode();
   final _captchaAnswerController = TextEditingController();
   final _otpController = TextEditingController();
 
@@ -77,6 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _lockoutTimer?.cancel();
     _usernameController.dispose();
     _passwordController.dispose();
+    _passwordFocusNode.dispose();
     _captchaAnswerController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -216,7 +218,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    FocusScope.of(context).unfocus();
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -266,9 +267,23 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = 'Unable to complete login. Check your connection.';
       });
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+
       if (refreshCaptcha && mounted) {
         await _refreshLoginCaptcha();
+      }
+
+      if (mounted &&
+          !_otpMode &&
+          !_showRegistration &&
+          !_showForgotPassword) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_otpMode) {
+            _passwordFocusNode.requestFocus();
+          }
+        });
       }
     }
   }
@@ -1018,7 +1033,13 @@ class _LoginScreenState extends State<LoginScreen> {
             _buildFieldLabel('Password'),
             TextFormField(
               controller: _passwordController,
+              focusNode: _passwordFocusNode,
               readOnly: false,
+              onTap: () {
+                if (!_passwordFocusNode.hasFocus) {
+                  _passwordFocusNode.requestFocus();
+                }
+              },
               obscureText: !_isPasswordVisible,
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.password],
