@@ -327,12 +327,33 @@ def verify_login_otp(
 
     now = utc_now()
 
-    if otp is None or otp.expires_at <= now:
+
+    if otp is None:
         db.rollback()
         raise HTTPException(
             400,
             "Invalid or expired login code."
         )
+
+    if otp.expires_at <= now:
+        otp.cancelled_at = now
+
+        record_security_event(
+            db,
+            event_type="login_otp_expired",
+            request=request,
+            user_id=user.id,
+            username_typed=user.username,
+            details="Login OTP expired before verification",
+        )
+
+        db.commit()
+
+        raise HTTPException(
+            400,
+            "Invalid or expired login code."
+        )
+
 
     if otp.attempts >= OTP_MAX_ATTEMPTS:
         otp.cancelled_at = now
@@ -342,12 +363,34 @@ def verify_login_otp(
             "Too many incorrect OTP attempts."
         )
 
+
     if not verify_otp(data.otp_code, otp.code_hash):
         attempts = otp.attempts + 1
         otp.attempts = attempts
 
+        record_security_event(
+            db,
+            event_type="login_otp_failed",
+            request=request,
+            user_id=user.id,
+            username_typed=user.username,
+            details=(
+                f"Incorrect login OTP attempt "
+                f"{attempts} of {OTP_MAX_ATTEMPTS}"
+            ),
+        )
+
         if attempts >= OTP_MAX_ATTEMPTS:
             otp.cancelled_at = now
+
+            record_security_event(
+                db,
+                event_type="login_otp_limit",
+                request=request,
+                user_id=user.id,
+                username_typed=user.username,
+                details="Maximum incorrect login OTP attempts reached",
+            )
 
         db.commit()
 
