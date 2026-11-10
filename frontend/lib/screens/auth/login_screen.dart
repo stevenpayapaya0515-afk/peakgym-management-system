@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -28,6 +30,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _captchaAnswerController = TextEditingController();
+  final _otpController = TextEditingController();
+
+  Uint8List? _captchaBytes;
+  String? _captchaChallengeId;
+  bool _captchaLoading = false;
+  bool _otpMode = false;
 
   bool _isPasswordVisible = false;
   bool _isLoading = false;
@@ -53,6 +62,12 @@ class _LoginScreenState extends State<LoginScreen> {
       _invitationToken = uri.queryParameters['invite'] ?? '';
       _showRegistration = true;
     }
+
+    if (!_showRegistration) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _refreshLoginCaptcha();
+      });
+    }
   }
 
   @override
@@ -60,6 +75,8 @@ class _LoginScreenState extends State<LoginScreen> {
     _lockoutTimer?.cancel();
     _usernameController.dispose();
     _passwordController.dispose();
+    _captchaAnswerController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
@@ -76,8 +93,52 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() {
       _showRegistration = false;
+      _otpMode = false;
       _errorMessage = null;
     });
+    _refreshLoginCaptcha();
+  }
+
+  Future<void> _refreshLoginCaptcha() async {
+    if (!mounted) return;
+    setState(() {
+      _captchaLoading = true;
+      _captchaChallengeId = null;
+      _captchaBytes = null;
+      _captchaAnswerController.clear();
+    });
+
+    try {
+      final response = await AuthService.getLoginCaptcha();
+      if (!mounted) return;
+      final image = response['image']?.toString() ?? '';
+      final id = response['challenge_id']?.toString() ?? '';
+      if (response['status_code'] != 200 || image.isEmpty || id.isEmpty) {
+        throw StateError('CAPTCHA is unavailable.');
+      }
+      final bytes = base64Decode(image.split(',').last);
+      setState(() {
+        _captchaBytes = bytes;
+        _captchaChallengeId = id;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Unable to load CAPTCHA. Check FastAPI and refresh it.';
+      });
+    } finally {
+      if (mounted) setState(() => _captchaLoading = false);
+    }
+  }
+
+  void _backFromLoginOtp() {
+    if (_isLoading) return;
+    setState(() {
+      _otpMode = false;
+      _errorMessage = null;
+      _otpController.clear();
+    });
+    _refreshLoginCaptcha();
   }
 
   void _startLockoutCountdown(int seconds) {
@@ -129,88 +190,122 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isLoading || _lockoutSeconds > 0) return;
     if (!_formKey.currentState!.validate()) return;
 
-    FocusScope.of(context).unfocus();
+    final challengeId = _captchaChallengeId;
+    if (challengeId == null || _captchaBytes == null) {
+      setState(() => _errorMessage = 'Refresh the CAPTCHA and try again.');
+      return;
+    }
 
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    bool refreshCaptcha = false;
+    try {
+      final response = await AuthService.startLogin(
+        username: _usernameController.text.trim(),
+        password: _passwordController.text,
+        captchaChallengeId: challengeId,
+        captchaAnswer: _captchaAnswerController.text.trim(),
+      );
+      if (!mounted) return;
+      refreshCaptcha = true; // A CAPTCHA is single-use on every login attempt.
+
+      if (response['status_code'] != 200) {
+        final message = response['detail']?.toString() ?? 'Login failed.';
+        final match = RegExp(
+          r'(?:try again in|locked for) (\d+) seconds?',
+          caseSensitive: false,
+        ).firstMatch(message);
+        final seconds = int.tryParse(match?.group(1) ?? '') ?? 0;
+        if (seconds > 0) {
+          _startLockoutCountdown(seconds);
+        } else {
+          setState(() => _errorMessage = message);
+        }
+        return;
+      }
+
+      if (response['otp_required'] != true) {
+        setState(() => _errorMessage = 'Unexpected login response.');
+        return;
+      }
+      refreshCaptcha = false; // OTP is now the active step.
+      _passwordController.clear();
+      _otpController.clear();
+      setState(() {
+        _otpMode = true;
+        _errorMessage = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      refreshCaptcha = true;
+      setState(() {
+        _errorMessage = 'Unable to complete login. Check your connection.';
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+      if (refreshCaptcha && mounted) {
+        await _refreshLoginCaptcha();
+      }
+    }
+  }
+
+  Future<void> _verifyLoginOtp() async {
+    if (_isLoading || !_otpMode) return;
+    if (!RegExp(r'^\d{6}$').hasMatch(_otpController.text.trim())) {
+      setState(() => _errorMessage = 'Enter the six-digit email code.');
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final response = await AuthService.login(
+      final response = await AuthService.verifyLoginOtp(
         username: _usernameController.text.trim(),
-        password: _passwordController.text,
+        otpCode: _otpController.text.trim(),
       );
-
       if (!mounted) return;
-
       if (response['status_code'] != 200) {
-        final message =
-            response['detail']?.toString() ?? 'Login failed. Please try again.';
-
-        final match = RegExp(
-          r'try again in (\d+) seconds?',
-          caseSensitive: false,
-        ).firstMatch(message);
-
-        final seconds = int.tryParse(match?.group(1) ?? '') ?? 0;
-
-        if (seconds > 0) {
-          _startLockoutCountdown(seconds);
-        } else {
-          setState(() {
-            _errorMessage = message;
-          });
-        }
-
+        setState(() => _errorMessage = response['detail']?.toString() ??
+            'Invalid or expired verification code.');
         return;
       }
 
       final token = response['access_token'];
       final user = response['user'];
-
       if (token is! String || token.isEmpty || user is! Map<String, dynamic>) {
-        setState(() {
-          _errorMessage = 'Invalid response from the server.';
-        });
-
+        setState(() => _errorMessage = 'Invalid server response.');
         return;
       }
 
       final role = user['role']?.toString().trim().toLowerCase();
-
       final Widget destination;
-
       if (role == 'admin') {
         destination = const AdminDashboard();
       } else if (role == 'staff') {
         destination = const StaffDashboard();
       } else {
-        setState(() {
-          _errorMessage = 'This account does not have a supported role.';
-        });
-
+        setState(() => _errorMessage = 'Unsupported account role.');
         return;
       }
 
       await TokenStorage.saveToken(token);
-
       if (!mounted) return;
-
-      Navigator.of(context)
-          .pushReplacement(MaterialPageRoute(builder: (_) => destination));
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => destination),
+      );
     } catch (_) {
       if (!mounted) return;
-
-      setState(() {
-        _errorMessage =
-            'Unable to complete login. Please check your connection '
-            'and try again.';
-      });
+      setState(() => _errorMessage = 'Unable to verify OTP. Try again.');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -390,8 +485,8 @@ class _LoginScreenState extends State<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(child: _buildIntroduction(compact: false)),
-          const SizedBox(width: 56),
-          SizedBox(width: 420, child: _buildLoginBox()),
+          const SizedBox(width: 64),
+          SizedBox(width: 430, child: _buildLoginBox()),
         ],
       );
     }
@@ -497,15 +592,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ORIGINAL LOGIN CARD DESIGN.
-  // Only its child switches to registration when requested.
   Widget _buildLoginBox() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
       decoration: BoxDecoration(
         color: const Color(0xF2131719),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFF39433F)),
         boxShadow: const [
           BoxShadow(
@@ -515,22 +608,295 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-      child: _showRegistration
-          ? ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: (MediaQuery.sizeOf(context).height * 0.72).clamp(
-                  280.0,
-                  680.0,
+      child: SingleChildScrollView(
+        child: _showRegistration
+            ? ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: (MediaQuery.sizeOf(context).height * 0.74).clamp(
+                    300.0,
+                    700.0,
+                  ),
+                ),
+                child: RegisterScreen(
+                  key: ValueKey(_invitationToken),
+                  invitationToken: _invitationToken,
+                  embedded: true,
+                  onBackToLogin: _returnToLogin,
+                ),
+              )
+            : _otpMode
+                ? _buildLoginOtpForm()
+                : _buildLoginForm(),
+      ),
+    );
+  }
+
+  Widget _buildLoginOtpForm() {
+    const loginGradient = LinearGradient(
+      colors: [AppTheme.primaryGreen, Color(0xFF75D69B), AppTheme.accentYellow],
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Image.asset(
+              'assets/logo_peak.png',
+              width: 78,
+              height: 78,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 18),
+
+        ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (bounds) => loginGradient.createShader(bounds),
+          child: const Text(
+            'Verify Your Login',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        const Text(
+          'Enter the six-digit code sent to your account email. '
+          'It expires after 3 minutes.',
+          style: TextStyle(
+            color: AppTheme.secondaryText,
+            fontSize: 12,
+            height: 1.5,
+          ),
+        ),
+
+        const SizedBox(height: 18),
+
+        _buildFieldLabel('Email verification code'),
+
+        TextField(
+          controller: _otpController,
+          enabled: !_isLoading,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          style: const TextStyle(
+            color: AppTheme.primaryText,
+            fontSize: 14,
+          ),
+          decoration: const InputDecoration(
+            counterText: '',
+            hintText: 'Enter the 6-digit OTP code',
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        if (_errorMessage != null)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0x22FF6B6B),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0x66FF6B6B)),
+            ),
+            child: Text(
+              _errorMessage!,
+              style: const TextStyle(
+                color: AppTheme.errorColor,
+                fontSize: 12,
+                height: 1.45,
+              ),
+            ),
+          ),
+
+        SizedBox(
+          width: double.infinity,
+          height: 46,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: loginGradient,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _verifyLoginOtp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                disabledBackgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                foregroundColor: AppTheme.background,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: RegisterScreen(
-                key: ValueKey(_invitationToken),
-                invitationToken: _invitationToken,
-                embedded: true,
-                onBackToLogin: _returnToLogin,
+              child: _isLoading
+                  ? const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppTheme.background,
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Verifying...',
+                          style: TextStyle(
+                            color: AppTheme.background,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const Text(
+                      'VERIFY OTP',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        Center(
+          child: TextButton(
+            onPressed: _isLoading ? null : _backFromLoginOtp,
+            child: const Text(
+              'Back to login',
+              style: TextStyle(
+                color: AppTheme.primaryGreen,
+                fontSize: 12,
               ),
-            )
-          : _buildLoginForm(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginCaptcha() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 18),
+
+        _buildFieldLabel('Security verification'),
+
+        const SizedBox(height: 8),
+
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF181C1F),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF39433F)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 82,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F7FA),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: _captchaBytes == null
+                          ? Text(
+                              _captchaLoading
+                                  ? 'Loading CAPTCHA...'
+                                  : 'CAPTCHA unavailable',
+                              style: const TextStyle(color: Colors.black54),
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.memory(
+                                _captchaBytes!,
+                                fit: BoxFit.contain,
+                                gaplessPlayback: true,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF101416),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF39433F)),
+                    ),
+                    child: IconButton(
+                      tooltip: 'Refresh CAPTCHA',
+                      onPressed: _captchaLoading || _isLoading
+                          ? null
+                          : _refreshLoginCaptcha,
+                      icon: const Icon(
+                        Icons.refresh_rounded,
+                        color: AppTheme.primaryGreen,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _captchaAnswerController,
+                enabled: !_isLoading,
+                maxLength: 6,
+                textCapitalization: TextCapitalization.characters,
+                style: const TextStyle(
+                  color: AppTheme.primaryText,
+                  fontSize: 14,
+                ),
+                decoration: const InputDecoration(
+                  counterText: '',
+                  hintText: 'Enter the 6 characters shown above',
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                ),
+                validator: (value) {
+                  if ((value?.trim().length ?? 0) != 6) {
+                    return 'Enter the 6 CAPTCHA characters.';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -546,18 +912,20 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // SAME ORIGINAL PEAKGYM LOGO.
             Center(
-              child: Image.asset(
-                'assets/logo_peak.png',
-                width: 96,
-                height: 96,
-                fit: BoxFit.contain,
-                semanticLabel: 'PeakGym logo',
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Image.asset(
+                  'assets/logo_peak.png',
+                  width: 78,
+                  height: 78,
+                  fit: BoxFit.contain,
+                  semanticLabel: 'PeakGym logo',
+                ),
               ),
             ),
 
-            const SizedBox(height: 15),
+            const SizedBox(height: 18),
 
             ShaderMask(
               blendMode: BlendMode.srcIn,
@@ -568,14 +936,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 'Welcome Back',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 30,
+                  fontSize: 28,
                   fontWeight: FontWeight.w800,
                   height: 1.1,
                 ),
               ),
             ),
 
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
 
             const Text(
               'Access your PeakGym management account.',
@@ -586,10 +954,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             _buildFieldLabel('Username'),
-
             TextFormField(
               controller: _usernameController,
               readOnly: _isLoading,
@@ -597,18 +964,21 @@ class _LoginScreenState extends State<LoginScreen> {
               autofillHints: const [AutofillHints.username],
               autocorrect: false,
               enableSuggestions: false,
-              style: const TextStyle(color: AppTheme.primaryText, fontSize: 14),
+              style: const TextStyle(
+                color: AppTheme.primaryText,
+                fontSize: 14,
+              ),
               decoration: const InputDecoration(
                 isDense: true,
                 hintText: 'Enter your username',
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 12,
+                  vertical: 14,
                 ),
                 prefixIcon: Icon(Icons.person_outline, size: 20),
                 prefixIconConstraints: BoxConstraints(
-                  minWidth: 40,
-                  minHeight: 44,
+                  minWidth: 42,
+                  minHeight: 46,
                 ),
               ),
               validator: (value) {
@@ -619,10 +989,9 @@ class _LoginScreenState extends State<LoginScreen> {
               },
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
             _buildFieldLabel('Password'),
-
             TextFormField(
               controller: _passwordController,
               readOnly: _isLoading,
@@ -632,18 +1001,21 @@ class _LoginScreenState extends State<LoginScreen> {
               autocorrect: false,
               enableSuggestions: false,
               onFieldSubmitted: (_) => _login(),
-              style: const TextStyle(color: AppTheme.primaryText, fontSize: 14),
+              style: const TextStyle(
+                color: AppTheme.primaryText,
+                fontSize: 14,
+              ),
               decoration: InputDecoration(
                 isDense: true,
                 hintText: 'Enter your password',
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 12,
+                  vertical: 14,
                 ),
                 prefixIcon: const Icon(Icons.lock_outline, size: 20),
                 prefixIconConstraints: const BoxConstraints(
-                  minWidth: 40,
-                  minHeight: 44,
+                  minWidth: 42,
+                  minHeight: 46,
                 ),
                 suffixIcon: IconButton(
                   tooltip: _isPasswordVisible
@@ -672,13 +1044,27 @@ class _LoginScreenState extends State<LoginScreen> {
               },
             ),
 
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: _isLoading ? null : () => _openPage('Help'),
-                child: const Text(
-                  'Forgot password?',
-                  style: TextStyle(color: AppTheme.primaryGreen, fontSize: 12),
+            _buildLoginCaptcha(),
+
+            Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 12),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _isLoading ? null : () => _openPage('Help'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
+                    minimumSize: const Size(0, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Forgot password?',
+                    style: TextStyle(
+                      color: AppTheme.primaryGreen,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -686,11 +1072,11 @@ class _LoginScreenState extends State<LoginScreen> {
             if (_errorMessage != null)
               Container(
                 width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: const Color(0x22FF6B6B),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0x66FF6B6B)),
                 ),
                 child: Semantics(
@@ -700,7 +1086,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: const TextStyle(
                       color: AppTheme.errorColor,
                       fontSize: 12,
-                      height: 1.4,
+                      height: 1.45,
                     ),
                   ),
                 ),
@@ -712,7 +1098,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: loginGradient,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: ElevatedButton(
                   onPressed: (_isLoading || _lockoutSeconds > 0)
@@ -724,7 +1110,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     shadowColor: Colors.transparent,
                     foregroundColor: AppTheme.background,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   child: _isLoading
@@ -761,13 +1147,14 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
 
             Center(
               child: Wrap(
                 alignment: WrapAlignment.center,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 spacing: 4,
+                runSpacing: 2,
                 children: [
                   const Text(
                     'Invited by your administrator?',
@@ -792,7 +1179,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(
                         color: AppTheme.primaryGreen,
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         decoration: TextDecoration.none,
                       ),
                     ),
@@ -805,6 +1192,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+
 
   Widget _buildFieldLabel(String label) {
     return Padding(

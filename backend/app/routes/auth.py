@@ -13,6 +13,9 @@ from app.security.token import create_access_token
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt.exceptions import InvalidTokenError
 from app.security.token import decode_access_token
+from app.security.password import verify_password
+from app.security.token import create_access_token
+from app.security.captcha import create_captcha_challenge
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -29,6 +32,14 @@ def get_current_user(
         raise HTTPException(
             status_code=401,
             detail="Invalid or expired access token",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    # Only accept tokens issued after password and OTP verification.
+    if payload.get("amr") != ["pwd", "otp"]:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again with email verification.",
             headers={"WWW-Authenticate": "Bearer"}
         )
 
@@ -56,88 +67,32 @@ def get_current_user(
 
     return user
 
-@router.post("/login")
-def login(credentials: LoginRequest, db: Session = Depends(get_db)):
 
-    user = db.query(User).filter(
-        User.username == credentials.username
-    ).first()
 
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid username or password"
+# =====================================
+# LOGIN CAPTCHA
+# =====================================
+
+@router.get("/captcha")
+def get_login_captcha(
+    db: Session = Depends(get_db)
+):
+    return create_captcha_challenge(db)
+
+
+# =====================================
+# LEGACY LOGIN - DISABLED
+# =====================================
+
+@router.post("/login", include_in_schema=False)
+def legacy_login_disabled():
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "Legacy login is disabled. "
+            "Use CAPTCHA and email OTP authentication."
         )
-
-    # Block inactive staff accounts.
-    if user.role == "staff" and not user.is_active:
-        raise HTTPException(
-            status_code=403,
-            detail="This account is inactive. Contact the administrator."
-        )
-
-    now = datetime.now()
-
-    # Check whether the account is currently locked.
-    if user.locked_until and user.locked_until > now:
-        remaining = int((user.locked_until - now).total_seconds())
-        remaining = max(1, remaining)
-
-        raise HTTPException(
-            status_code=429,
-            detail=f"Too many failed attempts. Try again in {remaining} seconds.",
-            headers={"Retry-After": str(remaining)}
-        )
-
-    # Reset expired lockout.
-    if user.locked_until and user.locked_until <= now:
-        user.failed_attempts = 0
-        user.locked_until = None
-
-    # Verify the existing PHP bcrypt password.
-    if not verify_password(credentials.password, user.password):
-
-        user.failed_attempts += 1
-
-        if user.failed_attempts >= 5:
-            user.failed_attempts = 5
-            user.locked_until = now + timedelta(seconds=60)
-            db.commit()
-
-            raise HTTPException(
-                status_code=429,
-                detail="Too many failed attempts. Account locked for 60 seconds.",
-                headers={"Retry-After": "60"}
-            )
-
-        db.commit()
-
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid username or password"
-        )
-
-    # Successful login: reset failed attempts.
-    user.failed_attempts = 0
-    user.locked_until = None
-    db.commit()
-
-    # Generate JWT access token.
-    access_token = create_access_token({
-        "sub": str(user.id),
-        "role": user.role
-    })
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "role": user.role
-        }
-    }
+    )
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):

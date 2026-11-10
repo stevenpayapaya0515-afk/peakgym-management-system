@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.routes.auth import router as auth_router
+from app.routes.login_otp import router as login_otp_router
 from app.routes.users import router as users_router
 from app.routes.members import router as members_router
 from app.routes.memberships import router as memberships_router
@@ -14,6 +15,7 @@ from app.routes.settings import router as settings_router
 from app.routes.invitations import router as invitations_router
 from app.routes.registration import router as registration_router
 from app.routes.registration_activation import router as registration_activation_router
+
 
 
 app = FastAPI(
@@ -34,6 +36,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(login_otp_router)
 app.include_router(users_router)
 app.include_router(members_router)
 app.include_router(memberships_router)
