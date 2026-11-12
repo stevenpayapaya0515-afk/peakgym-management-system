@@ -32,7 +32,7 @@ class RecaptchaV2 extends StatefulWidget {
 class _RecaptchaV2State extends State<RecaptchaV2> {
   static const _siteKey = String.fromEnvironment(
     'RECAPTCHA_SITE_KEY',
-    defaultValue: 'PASTE_YOUR_PUBLIC_SITE_KEY_HERE',
+    defaultValue: '6LcAoBwuAAAAADlW21aiWjZT1ItkwuFGNkbfpPBy',
   );
   web.HTMLElement? _host;
   late final Widget _embeddedView;
