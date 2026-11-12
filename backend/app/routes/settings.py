@@ -3,7 +3,7 @@ import re
 
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,8 @@ from app.database import get_db
 from app.models.user import User
 from app.routes.auth import get_current_user
 from app.security.password import verify_password
+from app.security.activity_logger import record_security_event
+from app.security.email_notifications import send_password_changed_notice
 from app.security.password_history import (
     REUSE_ERROR,
     is_recent_password,
@@ -63,6 +65,8 @@ def validate_new_password(password: str) -> None:
 @router.post("/change-password")
 def change_password(
     data: PasswordChangeRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -176,8 +180,27 @@ def change_password(
         set_password_with_history(db, user, data.new_password)
         user.password_change_attempts = 0
         user.password_change_locked_until = None
-
+        record_security_event(
+            db,
+            event_type="password_changed",
+            request=request,
+            user_id=user.id,
+            username_typed=user.username,
+            details="Password changed through Staff Settings",
+        )
         db.commit()
+
+        # Post-commit notification: email failures never roll back the change.
+        if user.email:
+            background_tasks.add_task(
+                send_password_changed_notice,
+                email=user.email,
+                username=user.username,
+                user_id=user.id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent", ""),
+                method="Staff Settings",
+            )
 
         return {
             "message": (

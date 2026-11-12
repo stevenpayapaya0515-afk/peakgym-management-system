@@ -88,7 +88,7 @@ def get_security_overview(
         return sum(event_counts.get(name, 0) for name in names)
 
     # Once IP enforcement is enabled, blocked_ips_now comes from persisted state.
-    # OTP_SENT and ALERT_EMAIL_SENT are still not fully tracked.
+    # OTP and alert counters reflect only successfully accepted Gmail sends.
     summary = {
         "successful_logins": count("login_success", "LOGIN_SUCCESS"),
         "failed_logins": count(*LOGIN_FAILED_TYPES),
@@ -98,12 +98,12 @@ def get_security_overview(
         "blocked_ips_now": db.query(func.count(IPBlock.id)).filter(
             IPBlock.blocked_until > now
         ).scalar() or 0,
-        "otp_sent": None,
+        "otp_sent": count("otp_sent", "OTP_SENT"),
         "otp_failures": count(
             "login_otp_failed", "password_reset_otp_failed",
             "registration_otp_failed", "OTP_FAILED",
         ),
-        "alert_emails_sent": None,
+        "alert_emails_sent": count("alert_email_sent", "ALERT_EMAIL_SENT"),
         "otp_expired": count("login_otp_expired"),
         "otp_limits": count("login_otp_limit"),
     }
@@ -214,6 +214,6 @@ def get_security_overview(
         "refreshed_at": now.isoformat(timespec="seconds"),
         "metrics_note": (
             "Summary: today (PHT). Hourly failures and top IPs: last 24 hours. "
-            "IP blocks are enforced. OTP-sent and alert-sent counts are not tracked yet."
+            "IP blocks are enforced. OTP and alert email totals count accepted sends recorded after this update."
         ),
     }

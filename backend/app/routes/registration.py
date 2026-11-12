@@ -10,7 +10,7 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -24,6 +24,7 @@ from app.schemas.registration import StaffRegistrationRequest
 from app.security.captcha import create_captcha_challenge
 from app.security.recaptcha_v2 import verify_recaptcha_v2
 from app.security.email_service import send_otp_email
+from app.security.email_notifications import audit_otp_sent
 from app.security.encryption import encrypt_sensitive_data
 from app.security.otp import generate_otp, hash_otp, verify_otp
 from app.security.password import hash_password, validate_password
@@ -77,6 +78,7 @@ def check_registration_username(
 @router.post("/start", status_code=201)
 def start_staff_registration(
     data: RegistrationStartRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     # Google enforces v2 token expiry and single-use server-side.
@@ -228,7 +230,11 @@ def start_staff_registration(
 
 
     try:
-        send_otp_email(email, otp_code, "register", OTP_EXPIRY_MINUTES)
+        accepted = send_otp_email(email, otp_code, "register", OTP_EXPIRY_MINUTES)
+        if accepted is False:
+            raise RuntimeError("Gmail did not confirm registration OTP email")
+        audit_otp_sent(purpose="register", request=request,
+                       username=username, user_id=None)
     except Exception:
         # An email transport error has uncertain delivery status. Disable this
         # attempt and require a fresh CAPTCHA and a new start request.
@@ -375,6 +381,7 @@ class RegistrationResendOTPRequest(BaseModel):
 @router.post("/resend-otp")
 def resend_registration_otp(
     data: RegistrationResendOTPRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     import hashlib
@@ -524,12 +531,16 @@ def resend_registration_otp(
         ) from None
 
     try:
-        send_otp_email(
+        accepted = send_otp_email(
             pending.email,
             new_code,
             "register",
             OTP_EXPIRY_MINUTES,
         )
+        if accepted is False:
+            raise RuntimeError("Gmail did not confirm registration OTP resend")
+        audit_otp_sent(purpose="register resend", request=request,
+                       username=pending.username, user_id=None)
     except Exception:
         try:
             new_otp.cancelled_at = utc_now()

@@ -11,6 +11,7 @@ from app.models.otp import OTP
 from app.models.user import User
 from app.security.recaptcha_v2 import verify_recaptcha_v2
 from app.security.email_service import send_otp_email
+from app.security.email_notifications import audit_otp_sent
 from app.security.otp import generate_otp, hash_otp, verify_otp
 from app.security.password import verify_password
 from app.security.policy import (
@@ -185,6 +186,9 @@ def start_login(
                 username=user.username,
                 attempts=failures,
                 lockout_seconds=lock_seconds,
+                user_id=user.id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent", ""),
             )
 
         if ip_seconds:
@@ -312,6 +316,11 @@ def start_login(
             503,
             "Could not send login OTP email."
         ) from None
+
+    audit_otp_sent(
+        purpose="login", request=request,
+        username=user.username, user_id=user.id,
+    )
 
     # IMPORTANT: No JWT is returned here.
     return {

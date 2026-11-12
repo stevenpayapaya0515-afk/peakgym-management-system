@@ -24,6 +24,7 @@ from app.models.user import User
 from app.security.activity_logger import record_security_event
 from app.security.recaptcha_v2 import verify_recaptcha_v2
 from app.security.email_service import send_otp_email
+from app.security.email_notifications import audit_otp_sent, send_password_changed_notice
 from app.security.login_alerts import send_login_lockout_alert
 from app.security.otp import generate_otp, hash_otp, verify_otp
 from app.security.password import validate_password, verify_password
@@ -241,6 +242,9 @@ def verify_security_answer(
                 username=user.username,
                 attempts=failures,
                 lockout_seconds=lock_seconds,
+                user_id=user.id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent", ""),
             )
         if lock_seconds:
             raise HTTPException(
@@ -298,7 +302,7 @@ class ResetRequest(BaseModel):
 
 
 @router.post("/request")
-def request_password_reset(data: ResetRequest, db: Session = Depends(get_db)):
+def request_password_reset(data: ResetRequest, request: Request, db: Session = Depends(get_db)):
     user, _gate = _check_gate(db, data.recovery_proof, data.username.strip())
     now = utc_now()
     message = {"message": "A reset code has been requested for the registered email."}
@@ -365,6 +369,8 @@ def request_password_reset(data: ResetRequest, db: Session = Depends(get_db)):
         delivered = send_otp_email(user.email, code, "reset", OTP_EXPIRY_MINUTES)
         if delivered is False:
             raise RuntimeError("Email delivery not confirmed")
+        audit_otp_sent(purpose="reset", request=request,
+                       username=user.username, user_id=user.id)
     except Exception:
         logger.exception("Password recovery email delivery failed")
         otp.cancelled_at = utc_now()
@@ -457,6 +463,7 @@ def verify_password_reset_code(
 def complete_password_reset(
     data: ResetCompleteRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     user, gate = _check_gate(db, data.recovery_proof, data.username.strip())
@@ -492,9 +499,27 @@ def complete_password_reset(
         username_typed=user.username,
         details="Password reset after CAPTCHA, question, and email OTP verification",
     )
+    record_security_event(
+        db,
+        event_type="password_changed",
+        request=request,
+        user_id=user.id,
+        username_typed=user.username,
+        details="Password reset and changed after security-question and Gmail OTP checks",
+    )
     try:
         db.commit()
     except Exception:
         db.rollback()
         raise HTTPException(500, "Unable to update password.") from None
+    if user.email:
+        background_tasks.add_task(
+            send_password_changed_notice,
+            email=user.email,
+            username=user.username,
+            user_id=user.id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent", ""),
+            method="Forgot Password",
+        )
     return {"message": "Password updated. Sign in with your new password."}

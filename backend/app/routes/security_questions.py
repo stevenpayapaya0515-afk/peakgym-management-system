@@ -20,6 +20,7 @@ from app.routes.auth import get_current_user
 from app.schemas.registration import validate_security_answer
 from app.security.activity_logger import record_security_event
 from app.security.email_service import send_otp_email
+from app.security.email_notifications import audit_otp_sent
 from app.security.otp import generate_otp, hash_otp, verify_otp
 from app.security.password import hash_password, verify_password
 from app.security.policy import (
@@ -182,6 +183,8 @@ def request_security_questions_code(
         sent = send_otp_email(user.email, code, PURPOSE, OTP_EXPIRY_MINUTES)
         if sent is False:
             raise RuntimeError("Gmail did not confirm delivery")
+        audit_otp_sent(purpose="questions", request=request,
+                       username=user.username, user_id=user.id)
     except Exception:
         db.rollback()
         entry.cancelled_at = utc_now()
