@@ -18,11 +18,23 @@
         }
         return;
       }
+      // The widget has fixed Google-supported sizes. Use compact mode when
+      // the form is narrow, rather than stretching/cropping the iframe.
+      const availableWidth = host.getBoundingClientRect().width;
+      if (availableWidth === 0) {
+        if (++tries < 150) window.setTimeout(init, 100);
+        else onError();
+        return;
+      }
+      const widgetSize = availableWidth < 304 ? 'compact' : 'normal';
+      host.style.display = 'flex';
+      host.style.justifyContent = 'center';
+      host.style.alignItems = 'center';
       try {
         const widgetId = window.grecaptcha.render(host, {
           sitekey: siteKey,
           theme: 'dark',
-          size: 'normal',
+          size: widgetSize,
           callback: onSuccess,
           'expired-callback': onExpired,
           'error-callback': onError

@@ -8,6 +8,7 @@ import '../../core/services/settings_service.dart';
 import '../../core/storage/token_storage.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/action_feedback.dart';
+import 'security_questions_card.dart';
 
 class StaffSettings extends StatefulWidget {
   const StaffSettings({super.key});
@@ -533,6 +534,8 @@ class _StaffSettingsState extends State<StaffSettings> {
                 ),
                 const SizedBox(height: 24),
                 _passwordCard(),
+                const SizedBox(height: 24),
+                const SecurityQuestionsCard(),
               ],
             ],
           ),

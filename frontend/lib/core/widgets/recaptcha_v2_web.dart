@@ -81,10 +81,22 @@ class _RecaptchaV2State extends State<RecaptchaV2> {
         style: TextStyle(color: Colors.redAccent, fontSize: 12),
       );
     }
-    return SizedBox(
-      width: 304,
-      height: 80,
-      child: _embeddedView,
+    // Fill the form field width. Google's iframe itself uses its supported
+    // normal (304px) or compact (164px) width; the JS bridge chooses based on
+    // the real available width, so the checkbox is not stretched or clipped.
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF181C1F),
+        border: Border.all(color: const Color(0xFF39433F)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 80,
+        child: _embeddedView,
+      ),
     );
   }
 }

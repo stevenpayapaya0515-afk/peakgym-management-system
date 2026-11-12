@@ -262,6 +262,10 @@ OTP_PURPOSES = {
     "reset": (
         "Your PeakGym password reset code",
         "Password reset code"
+    ),
+    "questions": (
+        "Your PeakGym security questions verification code",
+        "Security question update code"
     )
 }
 
