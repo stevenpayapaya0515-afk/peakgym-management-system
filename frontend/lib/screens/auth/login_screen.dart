@@ -14,6 +14,7 @@ import '../public/about_screen.dart';
 import '../public/security_screen.dart';
 import '../public/help_screen.dart';
 import '../staff/staff_dashboard.dart';
+import '../../core/widgets/idle_session_guard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.initialInvitationToken});
@@ -304,8 +305,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await TokenStorage.saveToken(token);
       if (!mounted) return;
+      final idleSeconds = (response['idle_timeout_seconds'] as num?)?.toInt() ?? 480;
+      final warningSeconds = (response['warning_before_seconds'] as num?)?.toInt() ?? 60;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => destination),
+        MaterialPageRoute(
+          builder: (_) => IdleSessionGuard(
+            idleTimeoutSeconds: idleSeconds,
+            warningBeforeSeconds: warningSeconds,
+            child: destination,
+          ),
+        ),
       );
     } catch (_) {
       if (!mounted) return;

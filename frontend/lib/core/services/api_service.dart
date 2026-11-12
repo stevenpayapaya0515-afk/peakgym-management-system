@@ -7,6 +7,7 @@ class ApiService {
   static Future<Map<String, dynamic>> post(
     String endpoint, {
     Map<String, dynamic>? body,
+    String? token,
   }) async {
     final response = await http
         .post(
@@ -14,6 +15,7 @@ class ApiService {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
           },
           body: jsonEncode(body ?? {}),
         )

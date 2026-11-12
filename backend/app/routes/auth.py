@@ -18,6 +18,7 @@ from app.security.token import create_access_token
 from app.security.captcha import create_captcha_challenge
 import hmac
 from app.security.token import password_token_stamp
+from app.security.session import validate_session_id, revoke_session_id
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -81,8 +82,26 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    session_id = payload.get("sid")
+    if type(session_id) is not int or not validate_session_id(db, session_id, user.id):
+        raise HTTPException(
+            status_code=401,
+            detail="Your session has expired due to inactivity. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return user
 
+
+@router.post("/session/logout")
+def logout_current_session(
+    current_user: User = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+):
+    payload = decode_access_token(credentials.credentials)
+    revoke_session_id(db, payload["sid"], current_user.id)
+    return {"message": "Session ended."}
 
 
 # =====================================

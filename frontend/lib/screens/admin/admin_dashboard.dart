@@ -165,6 +165,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             });
 
                             try {
+                              final token = await TokenStorage.getToken();
+                              if (token != null) {
+                                try {
+                                  await ApiService.post('/auth/session/logout', token: token)
+                                      .timeout(const Duration(seconds: 3));
+                                } catch (_) {
+                                  // Local logout still clears the token if the network is unavailable.
+                                }
+                              }
                               await TokenStorage.deleteToken();
 
                               if (!dialogContext.mounted) return;

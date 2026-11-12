@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.user_session import UserSession
 
 from app.security.policy import (
-    IDLE_SESSION_TIMEOUT_MINUTES
+    IDLE_SESSION_TIMEOUT_SECONDS
 )
 
 
@@ -44,7 +44,7 @@ def create_session(
     now = _now()
 
     expires_at = now + timedelta(
-        minutes=IDLE_SESSION_TIMEOUT_MINUTES
+        seconds=IDLE_SESSION_TIMEOUT_SECONDS
     )
 
     session_record = UserSession(
@@ -112,7 +112,7 @@ def validate_session(
         if (
             session_record.expires_at <= now
             or idle_duration >= timedelta(
-                minutes=IDLE_SESSION_TIMEOUT_MINUTES
+                seconds=IDLE_SESSION_TIMEOUT_SECONDS
             )
         ):
             session_record.revoked_at = now
@@ -123,7 +123,7 @@ def validate_session(
             session_record.last_activity_at = now
 
             session_record.expires_at = now + timedelta(
-                minutes=IDLE_SESSION_TIMEOUT_MINUTES
+                seconds=IDLE_SESSION_TIMEOUT_SECONDS
             )
 
             db.commit()
@@ -220,7 +220,7 @@ def set_session_cookie(
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=token,
-        max_age=IDLE_SESSION_TIMEOUT_MINUTES * 60,
+        max_age=IDLE_SESSION_TIMEOUT_SECONDS,
         httponly=True,
         secure=secure,
         samesite="lax",
@@ -241,3 +241,50 @@ def clear_session_cookie(response: Response):
         samesite="lax",
         path="/"
     )
+
+def validate_session_id(db: Session, session_id: int, user_id: int, touch: bool = True) -> bool:
+    """Server-enforced idle expiry for a JWT-bound, database-backed session.
+
+    A client timer alone cannot bypass this check. The same session is used
+    for all protected endpoints, and a fresh user action can refresh it.
+    """
+    now = _now()
+    try:
+        session_record = (
+            db.query(UserSession)
+            .filter(UserSession.id == session_id, UserSession.user_id == user_id)
+            .with_for_update()
+            .first()
+        )
+        if session_record is None or session_record.revoked_at is not None:
+            db.rollback()
+            return False
+        if (session_record.expires_at <= now or
+            session_record.last_activity_at + timedelta(seconds=IDLE_SESSION_TIMEOUT_SECONDS) <= now):
+            session_record.revoked_at = now
+            db.commit()
+            return False
+        if touch:
+            session_record.last_activity_at = now
+            session_record.expires_at = now + timedelta(seconds=IDLE_SESSION_TIMEOUT_SECONDS)
+            db.commit()
+        else:
+            db.rollback()
+        return True
+    except Exception:
+        db.rollback()
+        raise
+
+
+def revoke_session_id(db: Session, session_id: int, user_id: int) -> None:
+    now = _now()
+    try:
+        record = (db.query(UserSession)
+                  .filter(UserSession.id == session_id, UserSession.user_id == user_id)
+                  .with_for_update().first())
+        if record and record.revoked_at is None:
+            record.revoked_at = now
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise

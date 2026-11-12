@@ -28,6 +28,8 @@ from fastapi import Request
 from app.security.activity_logger import record_security_event
 from app.security.login_alerts import send_login_lockout_alert
 from app.security.token import create_access_token, password_token_stamp
+from app.security.session import create_session
+from app.security.policy import IDLE_SESSION_TIMEOUT_SECONDS, SESSION_WARNING_BEFORE_SECONDS
 
 
 
@@ -415,16 +417,27 @@ def verify_login_otp(
     db.commit()
 
 
+    # New server-tracked session is created only after successful Gmail OTP.
+    # An old session ID is never reused after login.
+    session = create_session(
+        db,
+        user_id=user.id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent", "")[:512],
+    )
     access_token = create_access_token({
         "sub": str(user.id),
         "role": user.role,
         "amr": ["pwd", "otp"],
         "pwdv": password_token_stamp(user.password),
+        "sid": session["session_id"],
     })
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
+        "idle_timeout_seconds": IDLE_SESSION_TIMEOUT_SECONDS,
+        "warning_before_seconds": SESSION_WARNING_BEFORE_SECONDS,
         "user": {
             "id": user.id,
             "username": user.username,

@@ -835,6 +835,15 @@ class _StaffLogoutDialogState extends State<_StaffLogoutDialog> {
     });
 
     try {
+      final token = await TokenStorage.getToken();
+      if (token != null) {
+        try {
+          await ApiService.post('/auth/session/logout', token: token)
+                                      .timeout(const Duration(seconds: 3));
+        } catch (_) {
+          // Always clear local credentials if the network is unavailable.
+        }
+      }
       await TokenStorage.deleteToken();
     } catch (_) {
       if (!mounted) return;

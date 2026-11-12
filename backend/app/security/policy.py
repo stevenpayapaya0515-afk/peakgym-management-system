@@ -1,3 +1,9 @@
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+
 # Student Security Configuration
 # IT 107 - Final Laboratory Project
 # Student ID: 241-00333
@@ -74,8 +80,13 @@ CAPTCHA_EXPIRY_MINUTES = 5
 # SESSION SECURITY
 # =====================================
 
+# The class demonstration uses 60s idle + 15s warning.
+# Normal graded seed remains 8 minutes idle + 1 minute warning.
+SESSION_DEMO_MODE = os.getenv("SESSION_DEMO_MODE", "false").lower() == "true"
 IDLE_SESSION_TIMEOUT_MINUTES = 8
 SESSION_WARNING_BEFORE_MINUTES = 1
+IDLE_SESSION_TIMEOUT_SECONDS = 60 if SESSION_DEMO_MODE else 8 * 60
+SESSION_WARNING_BEFORE_SECONDS = 15 if SESSION_DEMO_MODE else 60
 
 
 # =====================================
