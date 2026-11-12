@@ -1,4 +1,5 @@
 import hashlib
+import os
 import secrets
 import re
 from datetime import datetime, timedelta, timezone
@@ -33,7 +34,7 @@ router = APIRouter(
 INVITATION_EXPIRY_HOURS = 24
 MAX_INVITATIONS_PER_HOUR = 3
 
-FRONTEND_URL = "http://localhost:3000"
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 
 
 def utc_now():

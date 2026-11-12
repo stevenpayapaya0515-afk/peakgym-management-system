@@ -29,6 +29,7 @@ class SecurityQuestionsService {
 
     final http.Response response;
     try {
+      final csrfToken = await ApiService.getCsrfToken();
       response = await http
           .post(
             Uri.parse('${ApiService.baseUrl}$path'),
@@ -36,6 +37,7 @@ class SecurityQuestionsService {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
               'Accept': 'application/json',
+              'X-CSRF-Token': csrfToken,
             },
             body: jsonEncode(body),
           )

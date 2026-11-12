@@ -4,8 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from app.routes.auth import get_current_user
-from app.schemas.user import UserCreate, UserUpdate
-from app.security.password import hash_password
+from app.schemas.user import UserUpdate
 
 router = APIRouter(prefix="/users", tags=["User Management"])
 
@@ -34,56 +33,6 @@ def get_users(
         }
         for user in users
     ]
-
-@router.post("/")
-def create_user(
-    user_data: UserCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Only administrators can create staff accounts.
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=403,
-            detail="Administrator access required"
-        )
-
-    # Check if username already exists.
-    existing_user = db.query(User).filter(
-        User.username == user_data.username
-    ).first()
-
-    if existing_user:
-        raise HTTPException(
-            status_code=409,
-            detail="Username already exists"
-        )
-
-    # Create a new staff account.
-    new_user = User(
-        username=user_data.username,
-        email=user_data.email,
-        password=hash_password(user_data.password),
-        role="staff",
-        is_active=True,
-        failed_attempts=0,
-        locked_until=None
-    )
-
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    return {
-        "message": "Staff account created successfully",
-        "user": {
-            "id": new_user.id,
-            "username": new_user.username,
-            "email": new_user.email,
-            "role": new_user.role,
-            "is_active": new_user.is_active
-        }
-    }
 
 @router.put("/{user_id}")
 def update_user(

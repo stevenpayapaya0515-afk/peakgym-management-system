@@ -64,6 +64,8 @@ class MemberService {
   }) async {
     final token = await _token();
 
+    final csrfToken = method == 'GET' ? null : await ApiService.getCsrfToken();
+
     final request = http.Request(
       method,
       Uri.parse('${ApiService.baseUrl}$path'),
@@ -74,6 +76,10 @@ class MemberService {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     });
+
+    if (csrfToken != null) {
+      request.headers['X-CSRF-Token'] = csrfToken;
+    }
 
     if (body != null) {
       request.body = jsonEncode(body);
@@ -208,6 +214,7 @@ class MemberService {
     );
 
     request.headers['Authorization'] = 'Bearer $token';
+    request.headers['X-CSRF-Token'] = await ApiService.getCsrfToken();
 
     request.files.add(
       http.MultipartFile.fromBytes(

@@ -18,6 +18,12 @@ class StaffService {
       throw Exception('Your session has expired. Please log in again.');
     }
 
+    // Invitations already carry their own one-time CSRF token.
+    final existingCsrf = extraHeaders?['X-CSRF-Token'];
+    final csrfToken = method == 'GET' || existingCsrf != null
+        ? null
+        : await ApiService.getCsrfToken();
+
     final request = http.Request(
       method,
       Uri.parse('${ApiService.baseUrl}$path'),
@@ -27,8 +33,15 @@ class StaffService {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
-      ...?extraHeaders,
     });
+
+    if (csrfToken != null) {
+      request.headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    if (extraHeaders != null) {
+      request.headers.addAll(extraHeaders);
+    }
 
     if (body != null) {
       request.body = jsonEncode(body);
@@ -112,18 +125,6 @@ class StaffService {
       '/invitations/',
       extraHeaders: {'X-CSRF-Token': csrfData['csrf_token'] as String},
       body: {'email': email.trim().toLowerCase()},
-    );
-  }
-
-  static Future<void> createStaff({
-    required String username,
-    required String email,
-    required String password,
-  }) async {
-    await _request(
-      'POST',
-      '/users/',
-      body: {'username': username, 'email': email, 'password': password},
     );
   }
 

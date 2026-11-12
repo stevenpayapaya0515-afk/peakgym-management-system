@@ -32,12 +32,14 @@ class SettingsService {
       );
     }
 
+    final csrfToken = await ApiService.getCsrfToken();
     final response = await http.post(
       Uri.parse('${ApiService.baseUrl}/settings/change-password'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'X-CSRF-Token': csrfToken,
       },
       body: jsonEncode({
         'current_password': currentPassword,

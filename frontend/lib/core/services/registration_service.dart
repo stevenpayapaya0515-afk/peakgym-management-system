@@ -23,6 +23,9 @@ class RegistrationService {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       };
+      if (method != 'GET') {
+        headers['X-CSRF-Token'] = await ApiService.getCsrfToken();
+      }
       final http.Response response;
       if (method == 'GET') {
         response = await http

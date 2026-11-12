@@ -4,6 +4,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.security.csrf import generate_csrf_token
+from app.security.csrf_guard import csrf_protect_request
 from app.routes.auth import router as auth_router
 from app.routes.login_otp import router as login_otp_router
 from app.routes.users import router as users_router
@@ -36,6 +38,15 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    """Protect all normal API responses, including handled HTTP errors."""
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
 app.include_router(auth_router)
 app.include_router(login_otp_router)
 app.include_router(users_router)
@@ -49,6 +60,15 @@ app.include_router(registration_router)
 app.include_router(registration_activation_router)
 app.include_router(security_dashboard_router)
 app.include_router(password_recovery_router)
+
+# One-time CSRF validation for all browser-driven state-changing API calls.
+# /invitations/ already performs its own token check inside the route.
+app.middleware("http")(csrf_protect_request)
+
+
+@app.get("/security/csrf", tags=["Security"])
+def issue_csrf_token(db: Session = Depends(get_db)):
+    return generate_csrf_token(db)
 
 @app.get("/")
 def root():
