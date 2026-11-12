@@ -29,6 +29,7 @@ from app.security.activity_logger import record_security_event
 from app.security.login_alerts import send_login_lockout_alert
 from app.security.token import create_access_token, password_token_stamp
 from app.security.session import create_session
+from app.security.ip_blocking import reject_blocked_ip, block_after_failed_password
 from app.security.policy import IDLE_SESSION_TIMEOUT_SECONDS, SESSION_WARNING_BEFORE_SECONDS
 
 
@@ -65,6 +66,10 @@ def start_login(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
+    # IP lockout applies to ALL usernames, including nonexistent ones.
+    # Reject before CAPTCHA or password checking; untrusted headers cannot bypass it.
+    reject_blocked_ip(db, request)
+
     if not verify_recaptcha_v2(data.recaptcha_token):
         raise HTTPException(400, "reCAPTCHA verification failed. Check the box again.")
 
@@ -76,7 +81,25 @@ def start_login(
     )
 
     if user is None:
-        db.rollback()
+        # Preserve username-enumeration resistance, but also count failures
+        # for usernames that don't exist (the seeded rule is per IP).
+        record_security_event(
+            db,
+            event_type="login_failed",
+            request=request,
+            username_typed=data.username,
+            details="Invalid username or password",
+        )
+        ip_seconds = block_after_failed_password(
+            db, request, username=data.username, user_id=None,
+        )
+        db.commit()
+        if ip_seconds:
+            raise HTTPException(
+                429,
+                f"Too many failed logins from this IP. Try again in {ip_seconds} seconds.",
+                headers={"Retry-After": str(ip_seconds)},
+            )
         raise HTTPException(401, "Invalid username or password.")
 
     if not user.is_active:
@@ -128,7 +151,7 @@ def start_login(
             event_type="login_failed",
             request=request,
             user_id=user.id,
-            username_typed=user.username,
+            username_typed=data.username,
             details=f"Failed password attempt {failures}",
         )
 
@@ -146,20 +169,35 @@ def start_login(
                 ),
             )
 
+        # Count this attempt in the shared per-IP 10-minute window and
+        # apply a separate ten-minute IP block if the seeded limit is met.
+        ip_seconds = block_after_failed_password(
+            db, request, username=data.username, user_id=user.id,
+        )
         db.commit()
 
+        # Account lockout alert is still sent at 3/6/9, even if the IP
+        # threshold is reached by this same attempt.
+        if lock_seconds and failures in (3, 6, 9):
+            background_tasks.add_task(
+                send_login_lockout_alert,
+                email=user.email,
+                username=user.username,
+                attempts=failures,
+                lockout_seconds=lock_seconds,
+            )
+
+        if ip_seconds:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": (
+                    f"Too many failed logins from this IP. Try again in {ip_seconds} seconds."
+                )},
+                headers={"Retry-After": str(ip_seconds)},
+                background=background_tasks,
+            )
 
         if lock_seconds:
-            # Send an alert at the required lockout thresholds.
-            if failures in (3, 6, 9):
-                background_tasks.add_task(
-                    send_login_lockout_alert,
-                    email=user.email,
-                    username=user.username,
-                    attempts=failures,
-                    lockout_seconds=lock_seconds,
-                )
-
             return JSONResponse(
                 status_code=429,
                 content={
@@ -293,6 +331,9 @@ def verify_login_otp(
     request: Request,
     db: Session = Depends(get_db)
 ):
+    # A blocked address cannot finish an earlier OTP challenge either.
+    reject_blocked_ip(db, request)
+
     user = (
         db.query(User)
         .filter(User.username == data.username.strip())

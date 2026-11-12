@@ -290,7 +290,7 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
       _metricCard(
         label: 'IPs blocked now', count: _count('blocked_ips_now'),
         icon: Icons.block_outlined, accent: AppTheme.secondaryText,
-        hint: 'Not tracked until IP blocking is implemented',
+        hint: 'Currently blocked source IP addresses',
       ),
       _metricCard(
         label: 'OTPs sent today', count: _count('otp_sent'),
@@ -881,7 +881,7 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
                 _buildHourlyChart(),
                 const SizedBox(height: 32),
                 _sectionHeading('Top 5 IP Addresses',
-                  'Most failed login attempts in the past 24 hours. IP blocking is not yet enforced.'),
+                  'Most failed login attempts in the past 24 hours. Blocked status comes from the server.'),
                 const SizedBox(height: 16),
                 _buildTopIps(),
                 const SizedBox(height: 32),

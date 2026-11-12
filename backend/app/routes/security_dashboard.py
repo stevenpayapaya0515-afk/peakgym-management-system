@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.activity_log import ActivityLog
+from app.models.ip_block import IPBlock
 from app.models.security_flag import SecurityFlag
 from app.models.user import User
 from app.routes.auth import get_current_user
@@ -86,16 +87,17 @@ def get_security_overview(
     def count(*names: str) -> int:
         return sum(event_counts.get(name, 0) for name in names)
 
-    # Only claim a value where events or a persisted state are actually recorded.
-    # Existing PeakGym routes don't currently log OTP_SENT / ALERT_EMAIL_SENT,
-    # nor enforce IP_BLOCKED; None means "not tracked", NOT "zero".
+    # Once IP enforcement is enabled, blocked_ips_now comes from persisted state.
+    # OTP_SENT and ALERT_EMAIL_SENT are still not fully tracked.
     summary = {
         "successful_logins": count("login_success", "LOGIN_SUCCESS"),
         "failed_logins": count(*LOGIN_FAILED_TYPES),
         "accounts_locked_now": db.query(func.count(User.id)).filter(
             User.locked_until.isnot(None), User.locked_until > now
         ).scalar() or 0,
-        "blocked_ips_now": None,
+        "blocked_ips_now": db.query(func.count(IPBlock.id)).filter(
+            IPBlock.blocked_until > now
+        ).scalar() or 0,
         "otp_sent": None,
         "otp_failures": count(
             "login_otp_failed", "password_reset_otp_failed",
@@ -131,9 +133,20 @@ def get_security_overview(
         .limit(5)
         .all()
     )
+    active_blocks = {
+        row.ip_address: row.blocked_until
+        for row in db.query(IPBlock).filter(IPBlock.blocked_until > now).all()
+    }
     top_ips = [
-        {"ip_address": ip, "failures": int(failures), "blocked": None,
-         "block_status": "Not tracked"}
+        {
+            "ip_address": ip,
+            "failures": int(failures),
+            "blocked": ip in active_blocks,
+            "block_status": (
+                f"Blocked until {active_blocks[ip].strftime('%H:%M:%S')} PHT"
+                if ip in active_blocks else "Not blocked"
+            ),
+        }
         for ip, failures in top_rows
     ]
 
@@ -201,6 +214,6 @@ def get_security_overview(
         "refreshed_at": now.isoformat(timespec="seconds"),
         "metrics_note": (
             "Summary: today (PHT). Hourly failures and top IPs: last 24 hours. "
-            "IP blocking, OTP-sent and alert-sent counts are not tracked yet."
+            "IP blocks are enforced. OTP-sent and alert-sent counts are not tracked yet."
         ),
     }
