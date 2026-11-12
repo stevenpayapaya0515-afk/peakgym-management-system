@@ -18,6 +18,7 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
   String? _error;
   Map<String, dynamic> _summary = {};
   List<Map<String, dynamic>> _activities = [];
+  List<Map<String, dynamic>> _flags = [];
 
   @override
   void initState() {
@@ -59,6 +60,7 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
 
       final rawSummary = response['summary'];
       final rawActivities = response['recent_activities'];
+      final rawFlags = response['security_flags'];
 
       if (rawSummary is! Map || rawActivities is! List) {
         throw Exception('Unexpected response from the security service.');
@@ -71,8 +73,18 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
         }
       }
 
+      final parsedFlags = <Map<String, dynamic>>[];
+      if (rawFlags is List) {
+        for (final item in rawFlags) {
+          if (item is Map) {
+            parsedFlags.add(Map<String, dynamic>.from(item));
+          }
+        }
+      }
+
       if (!mounted) return;
       setState(() {
+        _flags = parsedFlags;
         _summary = Map<String, dynamic>.from(rawSummary);
         _activities = parsedActivities;
         _loading = false;
@@ -411,6 +423,80 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
     );
   }
 
+  Widget _buildSecurityFlags() {
+    if (_flags.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: _panelDecoration(),
+        child: const Text(
+          'No monitoring flags recorded yet. Run the backend monitor script to scan the last 24 hours.',
+          style: TextStyle(color: AppTheme.secondaryText, fontSize: 12),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final flag in _flags)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: _panelDecoration(),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _display(flag['severity']).toUpperCase() == 'HIGH'
+                          ? AppTheme.errorColor.withValues(alpha: .15)
+                          : AppTheme.accentYellow.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      _display(flag['severity']),
+                      style: TextStyle(
+                        color: _display(flag['severity']).toUpperCase() == 'HIGH'
+                            ? AppTheme.errorColor
+                            : AppTheme.accentYellow,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _display(flag['pattern']).replaceAll('_', ' '),
+                    style: const TextStyle(
+                      color: AppTheme.primaryText,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Text(
+                    _display(flag['target']),
+                    style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12),
+                  ),
+                  Text(
+                    _display(flag['description']),
+                    style: const TextStyle(color: AppTheme.secondaryText, fontSize: 12),
+                  ),
+                  Text(
+                    _display(flag['flag_date']),
+                    style: const TextStyle(color: AppTheme.secondaryText, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildRefreshButton() {
     return OutlinedButton.icon(
       onPressed: _loading ? null : _loadSecurityData,
@@ -528,6 +614,22 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
                 )
               else ...[
                 _buildMetrics(),
+                const SizedBox(height: 32),
+                const Text(
+                  'Detected Security Flags',
+                  style: TextStyle(
+                    color: AppTheme.primaryText,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Findings from the last manual monitoring scan. No editing or deleting.',
+                  style: TextStyle(color: AppTheme.secondaryText, fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                _buildSecurityFlags(),
                 const SizedBox(height: 32),
                 const Text(
                   'Recent Security Activity',

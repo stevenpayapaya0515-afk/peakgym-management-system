@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.activity_log import ActivityLog
+from app.models.security_flag import SecurityFlag
 from app.models.user import User
 from app.routes.auth import get_current_user
 
@@ -106,9 +107,29 @@ def get_security_overview(
             ),
         })
 
+    # Only fetch persisted monitoring findings. The dashboard never runs the scan.
+    flags = (
+        db.query(SecurityFlag)
+        .order_by(SecurityFlag.id.desc())
+        .limit(50)
+        .all()
+    )
+    security_flags = [
+        {
+            "id": flag.id,
+            "pattern": flag.pattern,
+            "target": flag.target,
+            "severity": flag.severity,
+            "description": flag.description,
+            "flag_date": flag.flag_date.isoformat() if flag.flag_date else None,
+        }
+        for flag in flags
+    ]
+
     return {
         "summary": summary,
         "recent_activities": activities,
         "event_counts": event_counts,
+        "security_flags": security_flags,
         "read_only": True,
     }

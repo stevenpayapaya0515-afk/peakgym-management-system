@@ -24,3 +24,4 @@ websockets==17.4
 cryptography==50.0.2
 Pillow==13.0.0
 requests==2.34.2
+tzdata
