@@ -22,7 +22,7 @@ from app.models.otp import OTP
 from app.models.staff_profile import StaffProfile
 from app.models.user import User
 from app.security.activity_logger import record_security_event
-from app.security.captcha import verify_captcha
+from app.security.recaptcha_v2 import verify_recaptcha_v2
 from app.security.email_service import send_otp_email
 from app.security.login_alerts import send_login_lockout_alert
 from app.security.otp import generate_otp, hash_otp, verify_otp
@@ -129,14 +129,13 @@ def _check_gate(db: Session, proof: str, username: str):
 
 class IdentifyRequest(BaseModel):
     username: str = Field(min_length=1, max_length=50)
-    captcha_challenge_id: str = Field(min_length=10, max_length=128)
-    captcha_answer: str = Field(min_length=1, max_length=20)
+    recaptcha_token: str = Field(min_length=20, max_length=8192)
 
 
 @router.post("/identify")
 def identify_account(data: IdentifyRequest, db: Session = Depends(get_db)):
-    if not verify_captcha(db, data.captcha_challenge_id, data.captcha_answer):
-        raise HTTPException(400, "Invalid or expired CAPTCHA. Refresh and retry.")
+    if not verify_recaptcha_v2(data.recaptcha_token):
+        raise HTTPException(400, "reCAPTCHA verification failed. Check the box again.")
 
     # Do not disclose whether a username exists. The question list is fixed by
     # the instructor seed, and the ticket is safe even for unknown usernames.

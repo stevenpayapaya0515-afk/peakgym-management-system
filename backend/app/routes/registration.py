@@ -21,7 +21,8 @@ from app.models.otp import OTP
 from app.models.pending_registration import PendingStaffRegistration
 from app.models.user import User
 from app.schemas.registration import StaffRegistrationRequest
-from app.security.captcha import create_captcha_challenge, verify_captcha
+from app.security.captcha import create_captcha_challenge
+from app.security.recaptcha_v2 import verify_recaptcha_v2
 from app.security.email_service import send_otp_email
 from app.security.encryption import encrypt_sensitive_data
 from app.security.otp import generate_otp, hash_otp, verify_otp
@@ -37,8 +38,7 @@ def utc_now():
 
 
 class RegistrationStartRequest(StaffRegistrationRequest):
-    captcha_challenge_id: str = Field(min_length=10, max_length=128)
-    captcha_answer: str = Field(min_length=1, max_length=20)
+    recaptcha_token: str = Field(min_length=20, max_length=8192)
 
 
 @router.get("/captcha")
@@ -79,9 +79,9 @@ def start_staff_registration(
     data: RegistrationStartRequest,
     db: Session = Depends(get_db),
 ):
-    # The CAPTCHA is one-use, even for failed registration attempts.
-    if not verify_captcha(db, data.captcha_challenge_id, data.captcha_answer):
-        raise HTTPException(400, "Invalid or expired CAPTCHA. Get a new image.")
+    # Google enforces v2 token expiry and single-use server-side.
+    if not verify_recaptcha_v2(data.recaptcha_token):
+        raise HTTPException(400, "reCAPTCHA verification failed. Check the box again.")
 
     now = utc_now()
     invitation_hash = hashlib.sha256(
@@ -149,7 +149,7 @@ def start_staff_registration(
         exclude={
             "invitation_token", "password", "confirm_password",
             "security_answer_q4", "security_answer_q7", "security_answer_q1",
-            "captcha_challenge_id", "captcha_answer",
+            "recaptcha_token",
         },
     )
     personal_data["security_answer_q4_hash"] = hash_password(

@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/widgets/recaptcha_v2.dart';
 import '../../core/storage/token_storage.dart';
 import '../../core/theme/app_theme.dart';
 import '../admin/admin_dashboard.dart';
@@ -32,12 +31,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final FocusNode _passwordFocusNode = FocusNode();
-  final _captchaAnswerController = TextEditingController();
   final _otpController = TextEditingController();
 
-  Uint8List? _captchaBytes;
-  String? _captchaChallengeId;
-  bool _captchaLoading = false;
+  String? _recaptchaToken;
+  int _recaptchaResetCounter = 0;
   bool _otpMode = false;
 
   bool _isPasswordVisible = false;
@@ -79,7 +76,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     _passwordFocusNode.dispose();
-    _captchaAnswerController.dispose();
     _otpController.dispose();
     super.dispose();
   }
@@ -106,33 +102,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _refreshLoginCaptcha() async {
     if (!mounted) return;
     setState(() {
-      _captchaLoading = true;
-      _captchaChallengeId = null;
-      _captchaBytes = null;
-      _captchaAnswerController.clear();
+      _recaptchaToken = null;
+      _recaptchaResetCounter++;
     });
-
-    try {
-      final response = await AuthService.getLoginCaptcha();
-      if (!mounted) return;
-      final image = response['image']?.toString() ?? '';
-      final id = response['challenge_id']?.toString() ?? '';
-      if (response['status_code'] != 200 || image.isEmpty || id.isEmpty) {
-        throw StateError('CAPTCHA is unavailable.');
-      }
-      final bytes = base64Decode(image.split(',').last);
-      setState(() {
-        _captchaBytes = bytes;
-        _captchaChallengeId = id;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Unable to load CAPTCHA. Check FastAPI and refresh it.';
-      });
-    } finally {
-      if (mounted) setState(() => _captchaLoading = false);
-    }
   }
 
   void _backFromLoginOtp() {
@@ -212,9 +184,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isLoading || _lockoutSeconds > 0) return;
     if (!_formKey.currentState!.validate()) return;
 
-    final challengeId = _captchaChallengeId;
-    if (challengeId == null || _captchaBytes == null) {
-      setState(() => _errorMessage = 'Refresh the CAPTCHA and try again.');
+    final captchaToken = _recaptchaToken;
+    if (captchaToken == null || captchaToken.isEmpty) {
+      setState(() => _errorMessage = 'Please check the I’m not a robot box.');
       return;
     }
 
@@ -228,8 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await AuthService.startLogin(
         username: _usernameController.text.trim(),
         password: _passwordController.text,
-        captchaChallengeId: challengeId,
-        captchaAnswer: _captchaAnswerController.text.trim(),
+        recaptchaToken: captchaToken,
       );
       if (!mounted) return;
       refreshCaptcha = true; // A CAPTCHA is single-use on every login attempt.
@@ -836,106 +807,21 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginCaptcha() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 18),
-
-        _buildFieldLabel('Security verification'),
-
-        const SizedBox(height: 8),
-
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF181C1F),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF39433F)),
+    return Padding(
+      padding: const EdgeInsets.only(top: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFieldLabel('Security verification'),
+          const SizedBox(height: 8),
+          RecaptchaV2(
+            resetCounter: _recaptchaResetCounter,
+            onTokenChanged: (token) {
+              if (mounted) setState(() => _recaptchaToken = token);
+            },
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 82,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F7FA),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: _captchaBytes == null
-                          ? Text(
-                              _captchaLoading
-                                  ? 'Loading CAPTCHA...'
-                                  : 'CAPTCHA unavailable',
-                              style: const TextStyle(color: Colors.black54),
-                            )
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.memory(
-                                _captchaBytes!,
-                                fit: BoxFit.contain,
-                                gaplessPlayback: true,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF101416),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF39433F)),
-                    ),
-                    child: IconButton(
-                      tooltip: 'Refresh CAPTCHA',
-                      onPressed: _captchaLoading || _isLoading
-                          ? null
-                          : _refreshLoginCaptcha,
-                      icon: const Icon(
-                        Icons.refresh_rounded,
-                        color: AppTheme.primaryGreen,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _captchaAnswerController,
-                enabled: !_isLoading,
-                maxLength: 6,
-                textCapitalization: TextCapitalization.characters,
-                style: const TextStyle(
-                  color: AppTheme.primaryText,
-                  fontSize: 14,
-                ),
-                decoration: const InputDecoration(
-                  counterText: '',
-                  hintText: 'Enter the 6 characters shown above',
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                ),
-                validator: (value) {
-                  if ((value?.trim().length ?? 0) != 6) {
-                    return 'Enter the 6 CAPTCHA characters.';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

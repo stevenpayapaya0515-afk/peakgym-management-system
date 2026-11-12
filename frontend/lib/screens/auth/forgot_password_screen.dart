@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/services/password_recovery_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/recaptcha_v2.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key, required this.onBackToLogin});
@@ -18,15 +18,14 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _usernameController = TextEditingController();
-  final _captchaController = TextEditingController();
   final _answerController = TextEditingController();
   final _confirmAnswerController = TextEditingController();
   final _otpController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmationController = TextEditingController();
 
-  Uint8List? _captchaBytes;
-  String? _captchaId;
+  String? _recaptchaToken;
+  int _recaptchaResetCounter = 0;
   String? _ticket;
   String? _proof;
   List<Map<String, dynamic>> _questions = [];
@@ -37,7 +36,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   int _resendSeconds = 0;
   int _step = 0; // Identify, question, OTP, password, success
   bool _busy = false;
-  bool _captchaLoading = false;
   bool _showNewPassword = false;
   bool _showConfirmation = false;
   bool _showAnswer = false;
@@ -61,7 +59,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void dispose() {
     _timer?.cancel();
     _usernameController.dispose();
-    _captchaController.dispose();
     _answerController.dispose();
     _confirmAnswerController.dispose();
     _otpController.dispose();
@@ -73,30 +70,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _loadCaptcha() async {
     if (!mounted) return;
     setState(() {
-      _captchaLoading = true;
-      _captchaId = null;
-      _captchaBytes = null;
-      _captchaController.clear();
+      _recaptchaToken = null;
+      _recaptchaResetCounter++;
     });
-    try {
-      final response = await PasswordRecoveryService.getCaptcha();
-      if (!mounted) return;
-      final image = response['image']?.toString() ?? '';
-      final id = response['challenge_id']?.toString() ?? '';
-      if (response['status_code'] != 200 || id.isEmpty || image.isEmpty) {
-        throw StateError('CAPTCHA unavailable');
-      }
-      setState(() {
-        _captchaId = id;
-        _captchaBytes = base64Decode(image.split(',').last);
-      });
-    } catch (_) {
-      if (mounted) {
-        setState(() => _error = 'CAPTCHA unavailable. Check FastAPI and refresh.');
-      }
-    } finally {
-      if (mounted) setState(() => _captchaLoading = false);
-    }
   }
 
   String _responseError(Map<String, dynamic> response) {
@@ -111,8 +87,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       setState(() => _error = 'Enter your username.');
       return;
     }
-    if (_captchaId == null || _captchaController.text.trim().length != 6) {
-      setState(() => _error = 'Enter the six CAPTCHA characters.');
+    if (_recaptchaToken == null || _recaptchaToken!.isEmpty) {
+      setState(() => _error = 'Please check the I’m not a robot box.');
       return;
     }
     setState(() {
@@ -123,8 +99,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     try {
       final result = await PasswordRecoveryService.identify(
         username: _usernameController.text,
-        captchaChallengeId: _captchaId!,
-        captchaAnswer: _captchaController.text,
+        recaptchaToken: _recaptchaToken!,
       );
       if (!mounted) return;
       if (result['status_code'] != 200 || result['recovery_ticket'] is! String) {
@@ -446,7 +421,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       'Password Updated',
     ];
     const subtitles = [
-      'Enter your username and solve the CAPTCHA.',
+      'Enter your username and check I’m not a robot.',
       'Choose one of your three registration questions.',
       'Enter the six-digit code sent to your registered email.',
       'Choose a strong password for your account.',
@@ -501,46 +476,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           _textField(controller: _usernameController, hint: 'Enter your username', maxLength: 50),
           const SizedBox(height: 17),
           _label('Security verification'),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF181C1F),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF39433F)),
-            ),
-            child: Column(children: [
-              Row(children: [
-                Expanded(
-                  child: Container(
-                    height: 82,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F7FA),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: _captchaBytes == null
-                        ? Center(
-                            child: Text(
-                              _captchaLoading ? 'Loading CAPTCHA...' : 'CAPTCHA unavailable',
-                              style: const TextStyle(color: Colors.black54),
-                            ),
-                          )
-                        : Image.memory(_captchaBytes!, fit: BoxFit.contain),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                IconButton(
-                  tooltip: 'Refresh CAPTCHA',
-                  onPressed: _captchaLoading || _busy ? null : _loadCaptcha,
-                  icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryGreen),
-                ),
-              ]),
-              const SizedBox(height: 10),
-              _textField(
-                controller: _captchaController,
-                hint: 'Enter the 6 characters above',
-                maxLength: 6,
-              ),
-            ]),
+          RecaptchaV2(
+            resetCounter: _recaptchaResetCounter,
+            onTokenChanged: (token) {
+              if (mounted) setState(() => _recaptchaToken = token);
+            },
           ),
           const SizedBox(height: 18),
           _primaryButton('CONTINUE', _identify),

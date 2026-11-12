@@ -1,0 +1,4 @@
+# Add these lines to backend/.env (private, Git-ignored):
+# Get a reCAPTCHA v2 CHECKBOX pair at https://www.google.com/recaptcha/admin/create
+RECAPTCHA_SECRET_KEY=YOUR_PRIVATE_V2_SECRET_KEY
+RECAPTCHA_ALLOWED_HOSTNAMES=localhost,127.0.0.1

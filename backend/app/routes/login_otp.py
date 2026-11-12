@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.otp import OTP
 from app.models.user import User
-from app.security.captcha import verify_captcha
+from app.security.recaptcha_v2 import verify_recaptcha_v2
 from app.security.email_service import send_otp_email
 from app.security.otp import generate_otp, hash_otp, verify_otp
 from app.security.password import verify_password
@@ -44,8 +44,7 @@ def utc_now():
 class LoginStartRequest(BaseModel):
     username: str = Field(min_length=1, max_length=50)
     password: str = Field(min_length=1)
-    captcha_challenge_id: str = Field(min_length=10, max_length=128)
-    captcha_answer: str = Field(min_length=1, max_length=20)
+    recaptcha_token: str = Field(min_length=20, max_length=8192)
 
 
 class LoginVerifyRequest(BaseModel):
@@ -64,15 +63,8 @@ def start_login(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
-    if not verify_captcha(
-        db,
-        data.captcha_challenge_id,
-        data.captcha_answer
-    ):
-        raise HTTPException(
-            400,
-            "Invalid or expired CAPTCHA. Refresh it and try again."
-        )
+    if not verify_recaptcha_v2(data.recaptcha_token):
+        raise HTTPException(400, "reCAPTCHA verification failed. Check the box again.")
 
     user = (
         db.query(User)

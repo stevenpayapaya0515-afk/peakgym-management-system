@@ -66,9 +66,6 @@ class RegistrationService {
   static Future<Map<String, dynamic>> validateInvitation(String token) =>
       _request('POST', '/invitations/validate', body: {'token': token});
 
-  static Future<Map<String, dynamic>> getCaptcha() =>
-      _request('GET', '/registration/captcha');
-
   static Future<Map<String, dynamic>> start(Map<String, dynamic> data) =>
       _request('POST', '/registration/start', body: data);
 

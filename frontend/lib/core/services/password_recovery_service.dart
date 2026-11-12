@@ -1,19 +1,14 @@
 import 'api_service.dart';
 
 class PasswordRecoveryService {
-  static Future<Map<String, dynamic>> getCaptcha() =>
-      ApiService.get('/auth/captcha');
-
   static Future<Map<String, dynamic>> identify({
     required String username,
-    required String captchaChallengeId,
-    required String captchaAnswer,
+    required String recaptchaToken,
   }) => ApiService.post(
     '/auth/password-recovery/identify',
     body: {
       'username': username.trim(),
-      'captcha_challenge_id': captchaChallengeId,
-      'captcha_answer': captchaAnswer.trim(),
+      'recaptcha_token': recaptchaToken,
     },
   );
 

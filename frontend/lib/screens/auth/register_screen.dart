@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 import '../../core/services/registration_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/recaptcha_v2.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -31,8 +30,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String? _invitedEmail;
   String? _error;
-  String? _captchaId;
-  Uint8List? _captchaBytes;
+  String? _recaptchaToken;
+  int _recaptchaResetCounter = 0;
 
   bool _loading = true;
   bool _submitting = false;
@@ -139,31 +138,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _refreshCaptcha() async {
-    try {
-      final response = await RegistrationService.getCaptcha();
-
-      final encoded = response['image']?.toString() ?? '';
-
-      if (encoded.isEmpty) {
-        throw const RegistrationException('CAPTCHA image unavailable.');
-      }
-
-      final bytes = base64Decode(encoded.split(',').last);
-
-      if (!mounted) return;
-
-      setState(() {
-        _captchaId = response['challenge_id']?.toString();
-        _captchaBytes = bytes;
-        _c('captcha_answer').clear();
-      });
-    } catch (error) {
-      if (!mounted) return;
-
-      setState(() {
-        _error = error.toString();
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _recaptchaToken = null;
+      _recaptchaResetCounter++;
+    });
   }
 
   String? _required(String? value) {
@@ -460,11 +439,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    if (_captchaId == null) {
-      setState(() {
-        _error = 'Please generate a new CAPTCHA.';
-      });
-
+    if (_recaptchaToken == null || _recaptchaToken!.isEmpty) {
+      setState(() => _error = 'Please check the I’m not a robot box.');
       return;
     }
 
@@ -493,7 +469,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'security_answer_q1',
         'date_hired',
         'emergency_contact_number',
-        'captcha_answer',
       ])
         key: _c(key).text.trim(),
 
@@ -507,7 +482,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       'privacy_consent': _consent,
 
-      'captcha_challenge_id': _captchaId,
+      'recaptcha_token': _recaptchaToken,
       'invitation_token': widget.invitationToken,
     };
 
@@ -1059,29 +1034,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _verificationStep() {
     return _section('Verification', [
-      Row(
-        children: [
-          if (_captchaBytes != null)
-            Flexible(
-              child: Image.memory(
-                _captchaBytes!,
-                width: 270,
-                height: 90,
-                fit: BoxFit.contain,
-              ),
-            )
-          else
-            const Expanded(child: Text('CAPTCHA unavailable')),
-
-          IconButton(
-            tooltip: 'New CAPTCHA',
-            onPressed: _submitting ? null : _refreshCaptcha,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
+      RecaptchaV2(
+        resetCounter: _recaptchaResetCounter,
+        onTokenChanged: (token) {
+          if (mounted) setState(() => _recaptchaToken = token);
+        },
       ),
-
-      _field('captcha_answer', 'Enter CAPTCHA characters'),
+      const SizedBox(height: 12),
 
       CheckboxListTile(
         contentPadding: EdgeInsets.zero,
