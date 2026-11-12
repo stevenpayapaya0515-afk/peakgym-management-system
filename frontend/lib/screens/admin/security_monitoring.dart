@@ -295,7 +295,7 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
       _metricCard(
         label: 'OTPs sent today', count: _count('otp_sent'),
         icon: Icons.mark_email_read_outlined, accent: AppTheme.primaryGreen,
-        hint: 'Sent-OTP event logging is not connected yet',
+        hint: 'Gmail-accepted codes across authentication and recovery flows',
       ),
       _metricCard(
         label: 'Incorrect OTPs today', count: _count('otp_failures'),
@@ -305,7 +305,7 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
       _metricCard(
         label: 'Alert emails sent today', count: _count('alert_emails_sent'),
         icon: Icons.notifications_active_outlined, accent: AppTheme.secondaryText,
-        hint: 'Alert-sent events are not tracked yet',
+        hint: 'Gmail-accepted lockout and password-change alerts',
       ),
       _metricCard(
         label: 'OTP limits today', count: _count('otp_limits'),
@@ -427,14 +427,164 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
   }
 
   Future<void> _selectDateRange() async {
+    _lastUserInteraction = DateTime.now();
     final now = DateTime.now();
-    final selection = await showDateRangePicker(
+    DateTime? start = _dateRange?.start;
+    DateTime? end = _dateRange?.end;
+
+    final selection = await showDialog<DateTimeRange>(
       context: context,
-      firstDate: DateTime(2020), lastDate: now,
-      initialDateRange: _dateRange,
-      helpText: 'Filter security activity dates',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, updateDialog) {
+          Widget dateBox(String label, DateTime? value, {bool active = false}) {
+            return Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.inputBackground,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: active ? AppTheme.primaryGreen : AppTheme.borderColor,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: const TextStyle(
+                            color: AppTheme.secondaryText, fontSize: 11)),
+                    const SizedBox(height: 4),
+                    Text(value == null ? 'Select date' : _dateString(value),
+                        style: const TextStyle(
+                            color: AppTheme.primaryText,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            backgroundColor: AppTheme.cardBackground,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: const BorderSide(color: AppTheme.borderColor),
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 420,
+                maxHeight: MediaQuery.sizeOf(dialogContext).height - 32,
+              ),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.date_range_outlined,
+                              color: AppTheme.primaryGreen, size: 21),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text('Select date range',
+                                style: TextStyle(
+                                    color: AppTheme.primaryText,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                          IconButton(
+                            tooltip: 'Close',
+                            icon: const Icon(Icons.close, size: 20),
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text('Choose a start date, then an end date.',
+                          style: TextStyle(
+                              color: AppTheme.secondaryText, fontSize: 12)),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          dateBox('START', start, active: start == null || end != null),
+                          const SizedBox(width: 10),
+                          dateBox('END', end, active: start != null && end == null),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Theme(
+                        data: Theme.of(dialogContext).copyWith(
+                          colorScheme: Theme.of(dialogContext).colorScheme.copyWith(
+                            primary: AppTheme.primaryGreen,
+                            onPrimary: AppTheme.background,
+                            surface: AppTheme.cardBackground,
+                            onSurface: AppTheme.primaryText,
+                          ),
+                        ),
+                        child: SizedBox(
+                          height: 340,
+                          width: double.infinity,
+                          child: CalendarDatePicker(
+                            key: ValueKey('${start?.millisecondsSinceEpoch}-${end?.millisecondsSinceEpoch}'),
+                            initialDate: end ?? start ?? now,
+                            firstDate: DateTime(2020),
+                            lastDate: now,
+                            onDateChanged: (date) {
+                              updateDialog(() {
+                                if (start == null || end != null || date.isBefore(start!)) {
+                                  start = date;
+                                  end = null;
+                                } else {
+                                  end = date;
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            child: const Text('CANCEL'),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: start != null && end != null
+                                ? () => Navigator.of(dialogContext).pop(
+                                      DateTimeRange(start: start!, end: end!),
+                                    )
+                                : null,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppTheme.primaryGreen,
+                              foregroundColor: AppTheme.background,
+                              disabledBackgroundColor: AppTheme.borderColor,
+                              disabledForegroundColor: AppTheme.secondaryText,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 13),
+                            ),
+                            child: const Text('APPLY RANGE'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
+
     if (!mounted || selection == null) return;
+    _lastUserInteraction = DateTime.now();
     setState(() => _dateRange = selection);
   }
 

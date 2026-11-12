@@ -158,17 +158,17 @@ class _SecurityQuestionsCardState extends State<SecurityQuestionsCard> {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(26),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: AppTheme.cardBackground,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppTheme.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Change security questions',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           const Divider(color: AppTheme.borderColor),
           const SizedBox(height: 14),
@@ -178,9 +178,9 @@ class _SecurityQuestionsCardState extends State<SecurityQuestionsCard> {
             'Your existing account and password stay unchanged.',
             style: TextStyle(color: AppTheme.secondaryText, height: 1.5),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 18),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 580),
+            constraints: const BoxConstraints(maxWidth: 560),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -236,19 +236,74 @@ class _SecurityQuestionsCardState extends State<SecurityQuestionsCard> {
                 ],
                 Align(
                   alignment: Alignment.centerRight,
-                  child: FilledButton(
-                    onPressed: _busy
-                        ? null
-                        : _codeSent ? _updateAnswers : _sendCode,
-                    child: _busy
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(_codeSent
-                            ? 'UPDATE SECURITY ANSWERS'
-                            : 'SEND GMAIL VERIFICATION CODE'),
+                  child: SizedBox(
+                    width: 244,
+                    height: 40,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            AppTheme.primaryGreen,
+                            AppTheme.accentYellow,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextButton(
+                        onPressed: _busy
+                            ? null
+                            : (_codeSent ? _updateAnswers : _sendCode),
+                        style: ButtonStyle(
+                          padding: const WidgetStatePropertyAll(
+                            EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          minimumSize: const WidgetStatePropertyAll(Size.zero),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          foregroundColor: const WidgetStatePropertyAll(
+                            AppTheme.background,
+                          ),
+                          backgroundColor: const WidgetStatePropertyAll(
+                            Colors.transparent,
+                          ),
+                          overlayColor: WidgetStateProperty.resolveWith(
+                            (states) {
+                              if (states.contains(WidgetState.pressed)) {
+                                return Colors.black.withValues(alpha: 0.20);
+                              }
+                              if (states.contains(WidgetState.hovered)) {
+                                return Colors.black.withValues(alpha: 0.12);
+                              }
+                              return Colors.transparent;
+                            },
+                          ),
+                          shape: WidgetStatePropertyAll(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                        child: _busy
+                            ? const SizedBox(
+                                width: 17,
+                                height: 17,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppTheme.background,
+                                ),
+                              )
+                            : Text(
+                                _codeSent
+                                    ? 'UPDATE SECURITY ANSWERS'
+                                    : 'SEND GMAIL VERIFICATION CODE',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                      ),
+                    ),
                   ),
                 ),
                 if (_codeSent)

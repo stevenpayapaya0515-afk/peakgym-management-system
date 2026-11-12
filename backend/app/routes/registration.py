@@ -22,6 +22,7 @@ from app.models.pending_registration import PendingStaffRegistration
 from app.models.user import User
 from app.schemas.registration import StaffRegistrationRequest
 from app.security.captcha import create_captcha_challenge
+from app.security.activity_logger import record_security_event
 from app.security.recaptcha_v2 import verify_recaptcha_v2
 from app.security.email_service import send_otp_email
 from app.security.email_notifications import audit_otp_sent
@@ -262,6 +263,7 @@ class RegistrationVerifyOTPRequest(BaseModel):
 @router.post("/verify-otp")
 def verify_registration_otp(
     data: RegistrationVerifyOTPRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """Confirm email ownership for a pending staff registration.
@@ -323,16 +325,38 @@ def verify_registration_otp(
 
     if otp.attempts >= OTP_MAX_ATTEMPTS:
         otp.cancelled_at = now
+        record_security_event(
+            db,
+            event_type="registration_otp_limit",
+            request=request,
+            username_typed=pending.username,
+            details="Staff registration OTP attempt limit reached",
+        )
         db.commit()
         raise HTTPException(429, "Too many incorrect verification attempts.")
 
     if not verify_otp(data.otp_code, otp.code_hash):
         otp.attempts += 1
-        if otp.attempts >= OTP_MAX_ATTEMPTS:
+        record_security_event(
+            db,
+            event_type="registration_otp_failed",
+            request=request,
+            username_typed=pending.username,
+            details=f"Incorrect staff registration OTP; attempt {otp.attempts}",
+        )
+        reached_limit = otp.attempts >= OTP_MAX_ATTEMPTS
+        if reached_limit:
             otp.cancelled_at = now
-            db.commit()
-            raise HTTPException(429, "Too many incorrect verification attempts.")
+            record_security_event(
+                db,
+                event_type="registration_otp_limit",
+                request=request,
+                username_typed=pending.username,
+                details="Staff registration OTP attempt limit reached",
+            )
         db.commit()
+        if reached_limit:
+            raise HTTPException(429, "Too many incorrect verification attempts.")
         raise HTTPException(400, "Invalid or expired verification code.")
 
     # Make consumption and verification one atomic database transaction.

@@ -100,12 +100,20 @@ def get_security_overview(
         ).scalar() or 0,
         "otp_sent": count("otp_sent", "OTP_SENT"),
         "otp_failures": count(
-            "login_otp_failed", "password_reset_otp_failed",
-            "registration_otp_failed", "OTP_FAILED",
+            "login_otp_failed",
+            "password_reset_otp_failed",
+            "registration_otp_failed",
+            "security_questions_otp_failed",
+            "OTP_FAILED",
         ),
         "alert_emails_sent": count("alert_email_sent", "ALERT_EMAIL_SENT"),
         "otp_expired": count("login_otp_expired"),
-        "otp_limits": count("login_otp_limit"),
+        "otp_limits": count(
+            "login_otp_limit",
+            "password_reset_otp_limit",
+            "registration_otp_limit",
+            "security_questions_otp_limit",
+        ),
     }
 
     failed_events_24h = (

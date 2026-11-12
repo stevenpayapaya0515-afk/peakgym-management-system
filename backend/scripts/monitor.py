@@ -27,8 +27,11 @@ from app.security.policy import IP_BLOCK_THRESHOLD  # noqa: E402
 PHT = ZoneInfo("Asia/Manila")
 FAILED_LOGIN_TYPES = {"login_failed", "LOGIN_FAILED"}
 FAILED_OTP_TYPES = {
-    "login_otp_failed", "password_reset_otp_failed",
-    "registration_otp_failed", "OTP_FAILED",
+    "login_otp_failed",
+    "password_reset_otp_failed",
+    "registration_otp_failed",
+    "security_questions_otp_failed",
+    "OTP_FAILED",
 }
 LOGIN_SUCCESS_TYPES = {"login_success", "LOGIN_SUCCESS"}
 

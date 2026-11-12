@@ -222,11 +222,20 @@ def update_security_questions(
         raise HTTPException(400, "Verification code expired. Request a new code.")
     if entry.attempts >= OTP_MAX_ATTEMPTS:
         entry.cancelled_at = now
+        record_security_event(
+            db,
+            event_type="security_questions_otp_limit",
+            request=request,
+            user_id=user.id,
+            username_typed=user.username,
+            details="Security-question update OTP attempt limit reached",
+        )
         db.commit()
         raise HTTPException(429, "Too many incorrect verification attempts. Request a new code.")
     if not verify_otp(data.otp_code, entry.code_hash):
         entry.attempts += 1
-        if entry.attempts >= OTP_MAX_ATTEMPTS:
+        reached_limit = entry.attempts >= OTP_MAX_ATTEMPTS
+        if reached_limit:
             entry.cancelled_at = now
         record_security_event(
             db,
@@ -236,8 +245,17 @@ def update_security_questions(
             username_typed=user.username,
             details=f"Incorrect security-question update OTP; attempt {entry.attempts}",
         )
+        if reached_limit:
+            record_security_event(
+                db,
+                event_type="security_questions_otp_limit",
+                request=request,
+                user_id=user.id,
+                username_typed=user.username,
+                details="Security-question update OTP attempt limit reached",
+            )
         db.commit()
-        if entry.attempts >= OTP_MAX_ATTEMPTS:
+        if reached_limit:
             raise HTTPException(429, "Too many incorrect verification attempts. Request a new code.")
         raise HTTPException(400, "Incorrect verification code.")
 
