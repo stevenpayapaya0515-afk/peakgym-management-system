@@ -7,6 +7,7 @@ import '../../core/security/registration_honeypot.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/recaptcha_v2.dart';
 import 'login_screen.dart';
+import 'privacy_notice_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({
@@ -211,6 +212,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     return null;
   }
+
+  String? _validateAddressName(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.length < 2 || text.length > 50) {
+      return 'Use 2–50 characters.';
+    }
+    if (!RegExp(r'^[A-Za-z]+(?: [A-Za-z]+)*$').hasMatch(text)) {
+      return 'Use letters and single spaces only.';
+    }
+    for (final word in text.split(' ')) {
+      if (word.substring(0, 1) != word.substring(0, 1).toUpperCase() ||
+          word.substring(1) != word.substring(1).toLowerCase()) {
+        return 'Capitalize the first letter of each word.';
+      }
+    }
+    return null;
+  }
+
+  String? _validateStreetAddress(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.length < 3 || text.length > 50) {
+      return 'Purok / Street must be 3–50 characters.';
+    }
+    return RegExp(r'^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$').hasMatch(text)
+        ? null
+        : 'Use letters, digits and single spaces only.';
+  }
+
+  String? _validatePostalCode(String? value) =>
+      RegExp(r'^\d{4}$').hasMatch((value ?? '').trim())
+          ? null
+          : 'ZIP Code must contain exactly 4 digits.';
 
   Widget _field(
     String key,
@@ -481,6 +514,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       'staff_position': _position,
       'employment_type': _employment,
 
+      'country': 'Philippines',
       'privacy_consent': _consent,
       'website': registrationHoneypotValue(),
 
@@ -893,19 +927,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _section('Address', [
           _field('region', 'Region', hint: 'Caraga'),
 
-          _field('province', 'Province', hint: 'Agusan del Norte'),
+          _field(
+            'province',
+            'Province',
+            hint: 'Agusan Del Norte',
+            validator: _validateAddressName,
+          ),
 
           _field(
             'city_municipality',
             'City / Municipality',
             hint: 'Cabadbaran City',
+            validator: _validateAddressName,
           ),
 
-          _field('barangay', 'Barangay'),
+          _field('barangay', 'Barangay', validator: _validateAddressName),
 
-          _field('street_address', 'Street address'),
+          _field(
+            'street_address',
+            'Purok / Street',
+            validator: _validateStreetAddress,
+          ),
 
-          _field('postal_code', 'Postal code'),
+          _field(
+            'postal_code',
+            'ZIP Code',
+            hint: '8600',
+            keyboardType: TextInputType.number,
+            validator: _validatePostalCode,
+          ),
+
+          TextFormField(
+            initialValue: 'Philippines',
+            readOnly: true,
+            decoration: const InputDecoration(labelText: 'Country'),
+          ),
         ]),
       ],
     );
@@ -1043,6 +1099,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         },
       ),
       const SizedBox(height: 12),
+
+      TextButton(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const PrivacyNoticeScreen(),
+          ),
+        ),
+        child: const Text('Read Privacy Notice (RA 10173)'),
+      ),
 
       CheckboxListTile(
         contentPadding: EdgeInsets.zero,

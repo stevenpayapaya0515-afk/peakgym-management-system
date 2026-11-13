@@ -93,13 +93,15 @@ class StaffRegistrationRequest(BaseModel):
 
     birthdate: date
 
-    # Address
-    region: str = Field(min_length=1, max_length=100)
-    province: str = Field(min_length=1, max_length=100)
-    city_municipality: str = Field(min_length=1, max_length=100)
-    barangay: str = Field(min_length=1, max_length=100)
-    street_address: str = Field(min_length=1, max_length=150)
-    postal_code: str = Field(min_length=4, max_length=10)
+    # Keep the existing region field and database columns. Country is a
+    # validated registration field, not an additional database column.
+    region: str = Field(min_length=2, max_length=50)
+    province: str = Field(min_length=2, max_length=50)
+    city_municipality: str = Field(min_length=2, max_length=50)
+    barangay: str = Field(min_length=2, max_length=50)
+    street_address: str = Field(min_length=3, max_length=50)
+    postal_code: str = Field(min_length=4, max_length=4)
+    country: str = Field(default="Philippines", min_length=2, max_length=50)
 
     # Account credentials
     username: str = Field(min_length=6, max_length=19)
@@ -147,6 +149,39 @@ class StaffRegistrationRequest(BaseModel):
         value = value.strip()
         if not re.fullmatch(r"(?:09\d{9}|\+639\d{9})", value):
             raise ValueError("Use a Philippine mobile number: 09XXXXXXXXX or +639XXXXXXXXX.")
+        return value
+
+    @field_validator("province", "city_municipality", "barangay", "country")
+    @classmethod
+    def check_address_name(cls, value: str) -> str:
+        # Handout section 4.7: letters/single spaces, Title Case, 2-50 chars.
+        if not re.fullmatch(r"[A-Za-z]+(?: [A-Za-z]+)*", value):
+            raise ValueError("Use letters and single spaces only.")
+        if value != value.title():
+            raise ValueError("Capitalize the first letter of each word.")
+        if len(value) > 50 or len(value) < 2:
+            raise ValueError("Address name must be 2 to 50 characters.")
+        return value
+
+    @field_validator("region")
+    @classmethod
+    def check_region(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z]+(?: [A-Za-z]+)*", value):
+            raise ValueError("Region must contain letters and single spaces only.")
+        return value
+
+    @field_validator("street_address")
+    @classmethod
+    def check_street_address(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9]+(?: [A-Za-z0-9]+)*", value):
+            raise ValueError("Purok / Street must contain letters, digits and single spaces only.")
+        return value
+
+    @field_validator("postal_code")
+    @classmethod
+    def check_postal_code(cls, value: str) -> str:
+        if not re.fullmatch(r"[0-9]{4}", value):
+            raise ValueError("ZIP Code must contain exactly 4 digits.")
         return value
 
     @field_validator("id_number")
@@ -246,6 +281,10 @@ class StaffRegistrationRequest(BaseModel):
             raise ValueError(
                 "Passwords do not match."
             )
+
+        # The current system is configured for Philippine staff addresses.
+        if self.country != "Philippines":
+            raise ValueError("Country must be Philippines.")
 
         if not self.privacy_consent:
             raise ValueError(
