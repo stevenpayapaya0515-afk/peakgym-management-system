@@ -32,8 +32,9 @@ frontend/ios/Flutter/.last_build_id
 !database/database.sql
 *.sql.gz
 
-# Logs
+# Logs (never publish error traces or rotated backups)
 *.log
+backend/_private_logs/
 
 # Editor and Windows files
 .vscode/

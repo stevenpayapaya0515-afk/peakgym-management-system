@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.security.csrf import generate_csrf_token
 from app.security.csrf_guard import csrf_protect_request
+from app.security.error_handling import install_error_handling
 from app.routes.auth import router as auth_router
 from app.routes.login_otp import router as login_otp_router
 from app.routes.users import router as users_router
@@ -26,6 +27,9 @@ app = FastAPI(
     description="Backend API for PeakGym Management System",
     version="1.0.0"
 )
+
+# Protection 10: hide unexpected internal errors and log them privately.
+install_error_handling(app)
 
 app.add_middleware(
     CORSMiddleware,
