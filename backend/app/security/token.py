@@ -5,11 +5,10 @@ import hashlib
 import hmac
 
 import jwt
-from dotenv import load_dotenv
+from app.security.private_config import load_private_env
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-load_dotenv(BASE_DIR / ".env")
+load_private_env()
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"

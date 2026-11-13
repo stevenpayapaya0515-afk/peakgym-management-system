@@ -8,7 +8,7 @@ import io
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from dotenv import load_dotenv
+from app.security.private_config import load_private_env
 from PIL import Image, ImageDraw, ImageFont
 
 from sqlalchemy.orm import Session
@@ -21,9 +21,7 @@ from app.security.policy import (
 )
 
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-
-load_dotenv(BASE_DIR / ".env")
+load_private_env()
 
 
 # Characters that are difficult to confuse.

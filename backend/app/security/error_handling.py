@@ -1,6 +1,6 @@
 """Protection 10: private traceback logging and generic public HTTP 500 responses.
 
-Store traceback files under backend/_private_logs (outside Flutter's web root),
+Store traceback files outside XAMPP/Apache htdocs,
 never log authorization headers, cookies, request bodies, or query strings.
 """
 from __future__ import annotations
@@ -10,6 +10,8 @@ import os
 import secrets
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+from app.security.private_config import PRIVATE_ERROR_LOG_DIR
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -23,7 +25,7 @@ def _private_error_logger(log_directory: Path | None = None) -> logging.Logger:
     destination = Path(
         log_directory
         if log_directory is not None
-        else os.getenv("PEAKGYM_ERROR_LOG_DIR", str(_BACKEND_ROOT / "_private_logs"))
+        else os.getenv("PEAKGYM_ERROR_LOG_DIR", str(PRIVATE_ERROR_LOG_DIR))
     ).resolve()
     destination.mkdir(parents=True, exist_ok=True)
     logfile = destination / "application_errors.log"

@@ -9,12 +9,10 @@ from pathlib import Path
 from html import escape
 from email.message import EmailMessage
 from email.utils import formataddr
-from dotenv import load_dotenv
+from app.security.private_config import load_private_env
 
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-
-load_dotenv(BASE_DIR / ".env")
+load_private_env()
 
 # =====================================
 # FORCE IPV4 FOR SMTP
@@ -111,7 +109,7 @@ def get_smtp_settings():
 
     if not host or not username or not password or not from_email:
         raise RuntimeError(
-            "SMTP configuration is incomplete. Check backend/.env."
+            "SMTP configuration is incomplete. Check private configuration."
         )
 
     if use_tls == use_ssl:

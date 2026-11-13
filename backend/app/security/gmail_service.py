@@ -4,14 +4,14 @@ import os
 from email.message import EmailMessage
 from pathlib import Path
 
-from dotenv import load_dotenv
+from app.security.private_config import GMAIL_PRIVATE_DIR, load_private_env
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
-TOKEN_FILE = BACKEND_DIR / "gmail_api_test" / "token.json"
+TOKEN_FILE = GMAIL_PRIVATE_DIR / "token.json"
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.send"
@@ -24,7 +24,7 @@ def send_gmail(
     body_text: str,
     body_html: str | None = None,
 ) -> bool:
-    load_dotenv(BACKEND_DIR / ".env")
+    load_private_env()
 
     sender = os.getenv("GMAIL_SENDER_EMAIL", "").strip()
 

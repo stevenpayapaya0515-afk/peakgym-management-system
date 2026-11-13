@@ -2,14 +2,13 @@
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
+from app.security.private_config import load_private_env
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.engine import URL
 
-# Load environment variables from backend/.env
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+# Load credentials only from the private directory outside XAMPP htdocs.
+load_private_env()
 
 # Database configuration
 DATABASE_URL = URL.create(

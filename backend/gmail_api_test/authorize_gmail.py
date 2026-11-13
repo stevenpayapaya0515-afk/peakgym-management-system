@@ -1,14 +1,18 @@
 
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.security.private_config import GMAIL_PRIVATE_DIR
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 
-BASE_DIR = Path(__file__).resolve().parent
-CREDENTIALS_FILE = BASE_DIR / "credentials.json"
-TOKEN_FILE = BASE_DIR / "token.json"
+GMAIL_PRIVATE_DIR.mkdir(parents=True, exist_ok=True)
+CREDENTIALS_FILE = GMAIL_PRIVATE_DIR / "credentials.json"
+TOKEN_FILE = GMAIL_PRIVATE_DIR / "token.json"
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.send"

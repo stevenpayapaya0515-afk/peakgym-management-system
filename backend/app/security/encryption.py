@@ -3,14 +3,12 @@ import base64
 import secrets
 
 from pathlib import Path
-from dotenv import load_dotenv
+from app.security.private_config import load_private_env
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.exceptions import InvalidTag
 
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-
-load_dotenv(BASE_DIR / ".env")
+load_private_env()
 
 
 # =====================================
@@ -26,7 +24,7 @@ def get_encryption_key() -> bytes:
 
     if not key_text:
         raise RuntimeError(
-            "FIELD_ENCRYPTION_KEY is missing from backend/.env"
+            "FIELD_ENCRYPTION_KEY is missing from private configuration"
         )
 
     try:

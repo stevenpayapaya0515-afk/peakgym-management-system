@@ -4,7 +4,7 @@ import hashlib
 import hmac
 
 from pathlib import Path
-from dotenv import load_dotenv
+from app.security.private_config import load_private_env
 
 from app.security.policy import (
     OTP_LENGTH,
@@ -16,9 +16,7 @@ from app.security.policy import (
 )
 
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-
-load_dotenv(BASE_DIR / ".env")
+load_private_env()
 
 
 def generate_otp() -> str:
@@ -39,7 +37,7 @@ def hash_otp(code: str) -> str:
     pepper = os.getenv("OTP_PEPPER")
 
     if not pepper:
-        raise RuntimeError("OTP_PEPPER is missing from backend/.env")
+        raise RuntimeError("OTP_PEPPER is missing from private configuration")
 
     return hmac.new(
         pepper.encode("utf-8"),

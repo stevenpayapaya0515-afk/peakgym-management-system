@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+from app.security.private_config import load_private_env
 
-load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+load_private_env()
 
 # Student Security Configuration
 # IT 107 - Final Laboratory Project
