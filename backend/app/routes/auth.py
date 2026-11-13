@@ -19,6 +19,10 @@ from app.security.session import (
     validate_session_id,
 )
 from app.security.token import decode_access_token, password_token_stamp
+from app.security.policy import (
+    IDLE_SESSION_TIMEOUT_SECONDS,
+    SESSION_WARNING_BEFORE_SECONDS,
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -127,4 +131,6 @@ def get_me(current_user: User = Depends(get_current_user)):
         "username": current_user.username,
         "email": current_user.email,
         "role": current_user.role,
+        "idle_timeout_seconds": IDLE_SESSION_TIMEOUT_SECONDS,
+        "warning_before_seconds": SESSION_WARNING_BEFORE_SECONDS,
     }
