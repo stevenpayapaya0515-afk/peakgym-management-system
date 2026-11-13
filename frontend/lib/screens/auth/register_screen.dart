@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/services/registration_service.dart';
+import '../../core/security/registration_honeypot.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/recaptcha_v2.dart';
 import 'login_screen.dart';
@@ -481,6 +482,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       'employment_type': _employment,
 
       'privacy_consent': _consent,
+      'website': registrationHoneypotValue(),
 
       'recaptcha_token': _recaptchaToken,
       'invitation_token': widget.invitationToken,

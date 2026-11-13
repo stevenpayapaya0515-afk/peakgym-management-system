@@ -7,11 +7,12 @@ No activity rows are modified by this endpoint.
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.security.activity_logger import record_security_event
 from app.models.activity_log import ActivityLog
 from app.models.ip_block import IPBlock
 from app.models.security_flag import SecurityFlag
@@ -24,9 +25,19 @@ PHT = ZoneInfo("Asia/Manila")
 LOGIN_FAILED_TYPES = ("login_failed", "LOGIN_FAILED")
 
 
-def require_admin(current_user: User = Depends(get_current_user)) -> User:
+def require_admin(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
     """Require an active account with the administrator role."""
     if current_user.role != "admin" or not current_user.is_active:
+        record_security_event(
+            db, event_type="admin_access_denied", request=request,
+            user_id=current_user.id, username_typed=current_user.username,
+            details="Non-admin attempted Security Monitoring access",
+        )
+        db.commit()
         raise HTTPException(status_code=403, detail="Administrator access required.")
     return current_user
 
@@ -54,6 +65,7 @@ def build_hourly_series(events: list, now: datetime) -> list[dict]:
 
 @router.get("/overview")
 def get_security_overview(
+    request: Request,
     limit: int = Query(default=50, ge=1, le=50),
     event_type: str | None = Query(default=None, max_length=50),
     username: str | None = Query(default=None, max_length=100),
@@ -70,6 +82,14 @@ def get_security_overview(
     """
     if from_date and to_date and from_date > to_date:
         raise HTTPException(status_code=422, detail="Start date must not be after end date.")
+
+    # Dashboard reads are themselves auditable. Only append a log row.
+    record_security_event(
+        db, event_type="admin_viewed_dashboard", request=request,
+        user_id=current_user.id, username_typed=current_user.username,
+        details="Admin opened or refreshed Security Monitoring",
+    )
+    db.commit()
 
     now = datetime.now(PHT).replace(tzinfo=None)
     today_start = datetime.combine(now.date(), time.min)

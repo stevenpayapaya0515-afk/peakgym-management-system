@@ -11,6 +11,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -82,8 +83,18 @@ def start_staff_registration(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    # Reject filled honeypot silently: no invitation lookup, database writes,
+    # OTP creation, or Gmail delivery. Normal registrations send an empty value.
+    if data.website:
+        return JSONResponse(status_code=200, content={"message": "Request received."})
+
     # Google enforces v2 token expiry and single-use server-side.
     if not verify_recaptcha_v2(data.recaptcha_token):
+        record_security_event(
+            db, event_type="captcha_failed", request=request,
+            username_typed=data.username, details="Registration reCAPTCHA rejected",
+        )
+        db.commit()
         raise HTTPException(400, "reCAPTCHA verification failed. Check the box again.")
 
     now = utc_now()
@@ -152,7 +163,7 @@ def start_staff_registration(
         exclude={
             "invitation_token", "password", "confirm_password",
             "security_answer_q4", "security_answer_q7", "security_answer_q1",
-            "recaptcha_token",
+            "recaptcha_token", "website",
         },
     )
     personal_data["security_answer_q4_hash"] = hash_password(
@@ -220,6 +231,10 @@ def start_staff_registration(
         )
 
         db.add(new_otp)
+        record_security_event(
+            db, event_type="registered", request=request,
+            username_typed=username, details="Pending invited Staff registration created",
+        )
         db.commit()
 
     except Exception:
@@ -363,6 +378,10 @@ def verify_registration_otp(
     otp.consumed_at = now
     pending.status = "verified"
     pending.verified_at = now
+    record_security_event(
+        db, event_type="account_verified", request=request,
+        username_typed=pending.username, details="Staff registration Gmail OTP verified",
+    )
     try:
         db.commit()
     except Exception:

@@ -9,7 +9,7 @@ import json
 import re
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -21,6 +21,7 @@ from app.models.pending_registration import PendingStaffRegistration
 from app.models.staff_profile import StaffProfile
 from app.models.user import User
 from app.security.encryption import decrypt_sensitive_data, encrypt_sensitive_data
+from app.security.activity_logger import record_security_event
 
 router = APIRouter(prefix="/registration", tags=["Staff Registration"])
 
@@ -36,6 +37,7 @@ class RegistrationActivateRequest(BaseModel):
 @router.post("/activate")
 def activate_staff_registration(
     data: RegistrationActivateRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """Create a staff user + profile after OTP verification, atomically."""
@@ -168,6 +170,11 @@ def activate_staff_registration(
         invitation.accepted_at = now
         pending.status = "activated"
         pending.activated_user_id = staff.id
+        record_security_event(
+            db, event_type="account_activated", request=request,
+            user_id=staff.id, username_typed=staff.username,
+            details="Invited Staff account activated after registration OTP",
+        )
         db.commit()
     except IntegrityError:
         db.rollback()

@@ -47,6 +47,14 @@
     init();
   };
 
+  // A browser automation tool may fill the offscreen registration input.
+  // The Flutter registration request includes its current value for server-side
+  // checking. No other form uses this input.
+  window.peakgymRegistrationHoneypotValue = function () {
+    const field = document.getElementById('peakgym-registration-website');
+    return field ? (field.value || '') : '';
+  };
+
   window.peakgymRecaptchaReset = function (host) {
     const widgetId = widgetIds.get(host);
     if (widgetId !== undefined && window.grecaptcha &&

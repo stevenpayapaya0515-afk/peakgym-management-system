@@ -134,13 +134,27 @@ class IdentifyRequest(BaseModel):
 
 
 @router.post("/identify")
-def identify_account(data: IdentifyRequest, db: Session = Depends(get_db)):
+def identify_account(
+    data: IdentifyRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     if not verify_recaptcha_v2(data.recaptcha_token):
+        record_security_event(
+            db, event_type="captcha_failed", request=request,
+            username_typed=data.username, details="Password recovery reCAPTCHA rejected",
+        )
+        db.commit()
         raise HTTPException(400, "reCAPTCHA verification failed. Check the box again.")
 
     # Do not disclose whether a username exists. The question list is fixed by
     # the instructor seed, and the ticket is safe even for unknown usernames.
     username = data.username.strip()
+    record_security_event(
+        db, event_type="reset_requested", request=request,
+        username_typed=username, details="Password recovery identification requested",
+    )
+    db.commit()
     ticket = jwt.encode(
         {
             "purpose": "recovery_identify",

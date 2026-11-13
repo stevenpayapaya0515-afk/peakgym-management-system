@@ -72,6 +72,11 @@ def start_login(
     reject_blocked_ip(db, request)
 
     if not verify_recaptcha_v2(data.recaptcha_token):
+        record_security_event(
+            db, event_type="captcha_failed", request=request,
+            username_typed=data.username, details="Login reCAPTCHA rejected",
+        )
+        db.commit()
         raise HTTPException(400, "reCAPTCHA verification failed. Check the box again.")
 
     user = (

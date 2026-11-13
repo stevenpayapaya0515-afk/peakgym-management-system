@@ -70,6 +70,10 @@ def validate_security_answer(value: SecretStr) -> SecretStr:
 
 
 class StaffRegistrationRequest(BaseModel):
+    # Hidden anti-bot field; genuine registrants leave this empty.
+    # Optional to keep existing clients working.
+    website: str = Field(default="", max_length=2048)
+
     # Admin invitation
     invitation_token: str = Field(
         min_length=20,
