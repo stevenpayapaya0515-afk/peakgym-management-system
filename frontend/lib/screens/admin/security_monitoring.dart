@@ -91,7 +91,7 @@ class _SecurityMonitoringState extends State<SecurityMonitoring> {
 
     try {
       final token = await TokenStorage.getToken();
-      if (token == null || token.isEmpty) {
+      if (!TokenStorage.usesCookieSession && (token == null || token.isEmpty)) {
         throw Exception('Your session has expired. Please log in again.');
       }
 

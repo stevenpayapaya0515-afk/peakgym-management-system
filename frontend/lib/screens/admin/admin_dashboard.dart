@@ -39,7 +39,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     try {
       final token = await TokenStorage.getToken();
 
-      if (token == null || token.isEmpty) {
+      if (!TokenStorage.usesCookieSession && (token == null || token.isEmpty)) {
         throw Exception(
           'Your session has expired. Please log in again.',
         );
@@ -166,7 +166,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
                             try {
                               final token = await TokenStorage.getToken();
-                              if (token != null) {
+                              if (TokenStorage.usesCookieSession || token != null) {
                                 try {
                                   await ApiService.post('/auth/session/logout', token: token)
                                       .timeout(const Duration(seconds: 3));

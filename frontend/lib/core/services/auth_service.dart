@@ -1,4 +1,5 @@
 import 'api_service.dart';
+import '../storage/token_storage.dart';
 
 class AuthService {
   // Step 1: Password + CAPTCHA. This endpoint must NOT return a JWT.
@@ -24,6 +25,7 @@ class AuthService {
     body: {
       'username': username,
       'otp_code': otpCode,
+      'token_transport': TokenStorage.usesCookieSession ? 'cookie' : 'bearer',
     },
   );
 

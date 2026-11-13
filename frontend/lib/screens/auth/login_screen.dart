@@ -287,7 +287,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final token = response['access_token'];
       final user = response['user'];
-      if (token is! String || token.isEmpty || user is! Map<String, dynamic>) {
+      if ((!TokenStorage.usesCookieSession &&
+              (token is! String || token.isEmpty)) ||
+          user is! Map<String, dynamic>) {
         setState(() => _errorMessage = 'Invalid server response.');
         return;
       }
@@ -303,7 +305,11 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      await TokenStorage.saveToken(token);
+      if (!TokenStorage.usesCookieSession) {
+        await TokenStorage.saveToken(token as String);
+      } else {
+        await TokenStorage.deleteToken(); // Clear old pre-migration JWT.
+      }
       if (!mounted) return;
       final idleSeconds = (response['idle_timeout_seconds'] as num?)?.toInt() ?? 480;
       final warningSeconds = (response['warning_before_seconds'] as num?)?.toInt() ?? 60;

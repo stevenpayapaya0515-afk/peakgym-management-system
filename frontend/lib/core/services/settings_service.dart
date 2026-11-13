@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import '../storage/token_storage.dart';
 import 'api_service.dart';
 
@@ -26,17 +24,17 @@ class SettingsService {
   }) async {
     final token = await TokenStorage.getToken();
 
-    if (token == null || token.isEmpty) {
+    if (!TokenStorage.usesCookieSession && (token == null || token.isEmpty)) {
       throw const PasswordChangeException(
         'Your session has expired. Please log in again.',
       );
     }
 
     final csrfToken = await ApiService.getCsrfToken();
-    final response = await http.post(
+    final response = await ApiService.client.post(
       Uri.parse('${ApiService.baseUrl}/settings/change-password'),
       headers: {
-        'Authorization': 'Bearer $token',
+        ...ApiService.authHeaders(token),
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'X-CSRF-Token': csrfToken,

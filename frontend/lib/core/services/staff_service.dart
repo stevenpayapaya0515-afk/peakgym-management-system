@@ -14,7 +14,7 @@ class StaffService {
   }) async {
     final token = await TokenStorage.getToken();
 
-    if (token == null || token.isEmpty) {
+    if (!TokenStorage.usesCookieSession && (token == null || token.isEmpty)) {
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -32,7 +32,7 @@ class StaffService {
     request.headers.addAll({
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
+      ...ApiService.authHeaders(token),
     });
 
     if (csrfToken != null) {
@@ -47,54 +47,48 @@ class StaffService {
       request.body = jsonEncode(body);
     }
 
-    final client = http.Client();
+    final streamed = await ApiService.client.send(request);
+    final response = await http.Response.fromStream(streamed);
 
-    try {
-      final streamed = await client.send(request);
-      final response = await http.Response.fromStream(streamed);
+    dynamic data;
 
-      dynamic data;
-
-      if (response.body.isNotEmpty) {
-        try {
-          data = jsonDecode(response.body);
-        } catch (_) {
-          throw Exception(
-            'The server returned an unexpected response '
-            '(${response.statusCode}).',
-          );
-        }
+    if (response.body.isNotEmpty) {
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        throw Exception(
+          'The server returned an unexpected response '
+          '(${response.statusCode}).',
+        );
       }
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return data;
-      }
-
-      if (response.statusCode == 401) {
-        throw Exception('Your session has expired. Please log in again.');
-      }
-
-      final detail = data is Map ? data['detail'] : null;
-
-      if (detail is List) {
-        final messages = detail
-            .map((item) {
-              if (item is Map) {
-                return item['msg']?.toString() ?? 'Invalid input.';
-              }
-              return item.toString();
-            })
-            .join('\n');
-
-        throw Exception(messages);
-      }
-
-      throw Exception(
-        detail?.toString() ?? 'Request failed (${response.statusCode}).',
-      );
-    } finally {
-      client.close();
     }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    }
+
+    if (response.statusCode == 401) {
+      throw Exception('Your session has expired. Please log in again.');
+    }
+
+    final detail = data is Map ? data['detail'] : null;
+
+    if (detail is List) {
+      final messages = detail
+          .map((item) {
+            if (item is Map) {
+              return item['msg']?.toString() ?? 'Invalid input.';
+            }
+            return item.toString();
+          })
+          .join('\n');
+
+      throw Exception(messages);
+    }
+
+    throw Exception(
+      detail?.toString() ?? 'Request failed (${response.statusCode}).',
+    );
   }
 
   static Future<List<Map<String, dynamic>>> getStaff() async {

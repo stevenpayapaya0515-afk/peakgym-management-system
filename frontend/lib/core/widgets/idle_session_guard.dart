@@ -89,7 +89,7 @@ class _IdleSessionGuardState extends State<IdleSessionGuard>
   Future<bool> _checkServerSession() async {
     try {
       final token = await TokenStorage.getToken();
-      if (token == null || token.isEmpty) return false;
+      if (!TokenStorage.usesCookieSession && (token == null || token.isEmpty)) return false;
       final result = await ApiService.get('/auth/me', token: token)
           .timeout(const Duration(seconds: 8));
       if (result['status_code'] == 401 || result['status_code'] == 403) {
@@ -151,9 +151,17 @@ class _IdleSessionGuardState extends State<IdleSessionGuard>
     if (_ending) return;
     _ending = true;
     try {
+      final token = await TokenStorage.getToken();
+      // Clear and revoke the browser cookie / native JWT session on idle logout.
+      try {
+        await ApiService.post('/auth/session/logout', token: token)
+            .timeout(const Duration(seconds: 3));
+      } catch (_) {
+        // The backend still expires sessions independently if offline.
+      }
       await TokenStorage.deleteToken();
     } catch (_) {
-      // The server still rejects the session after its idle deadline.
+      // The backend still enforces the idle deadline.
     }
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(

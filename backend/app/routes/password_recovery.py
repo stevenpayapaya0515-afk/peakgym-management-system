@@ -21,6 +21,7 @@ from app.database import get_db
 from app.models.otp import OTP
 from app.models.staff_profile import StaffProfile
 from app.models.user import User
+from app.models.user_session import UserSession
 from app.security.activity_logger import record_security_event
 from app.security.recaptcha_v2 import verify_recaptcha_v2
 from app.security.email_service import send_otp_email
@@ -505,6 +506,11 @@ def complete_password_reset(
     user.password_change_locked_until = None
     otp.consumed_at = now
     gate.consumed_at = now
+    # Recovery also invalidates any already-authenticated browser/device.
+    db.query(UserSession).filter(
+        UserSession.user_id == user.id,
+        UserSession.revoked_at.is_(None),
+    ).update({"revoked_at": now}, synchronize_session=False)
     record_security_event(
         db,
         event_type="password_reset_completed",

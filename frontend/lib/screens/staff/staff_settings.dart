@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/settings_service.dart';
 import '../../core/storage/token_storage.dart';
+import '../auth/login_screen.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/action_feedback.dart';
 import 'security_questions_card.dart';
@@ -60,7 +61,7 @@ class _StaffSettingsState extends State<StaffSettings> {
     try {
       final token = await TokenStorage.getToken();
 
-      if (token == null || token.isEmpty) {
+      if (!TokenStorage.usesCookieSession && (token == null || token.isEmpty)) {
         throw Exception('Your session has expired. Please log in again.');
       }
 
@@ -197,6 +198,14 @@ class _StaffSettingsState extends State<StaffSettings> {
         _remaining = 0;
         _visible.fillRange(0, _visible.length, false);
       });
+      // All device/browser sessions have been revoked by FastAPI.
+      await TokenStorage.deleteToken();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+      return;
     }
 
     setState(() => _saving = false);

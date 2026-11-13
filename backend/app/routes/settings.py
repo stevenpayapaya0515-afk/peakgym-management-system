@@ -3,12 +3,13 @@ import re
 
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
+from app.models.user_session import UserSession
 from app.routes.auth import get_current_user
 from app.security.password import verify_password
 from app.security.activity_logger import record_security_event
@@ -66,6 +67,7 @@ def validate_new_password(password: str) -> None:
 def change_password(
     data: PasswordChangeRequest,
     request: Request,
+    response: Response,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -180,6 +182,12 @@ def change_password(
         set_password_with_history(db, user, data.new_password)
         user.password_change_attempts = 0
         user.password_change_locked_until = None
+        # Revoke browser cookies and native JWT-bound sessions together with
+        # the password update, before committing the transaction.
+        db.query(UserSession).filter(
+            UserSession.user_id == user.id,
+            UserSession.revoked_at.is_(None),
+        ).update({"revoked_at": datetime.utcnow()}, synchronize_session=False)
         record_security_event(
             db,
             event_type="password_changed",
@@ -189,6 +197,9 @@ def change_password(
             details="Password changed through Staff Settings",
         )
         db.commit()
+        # The password change invalidates every session, including this one.
+        from app.security.session import clear_session_cookie
+        clear_session_cookie(response)
 
         # Post-commit notification: email failures never roll back the change.
         if user.email:

@@ -21,7 +21,7 @@ class SecurityQuestionsService {
     Map<String, String> body,
   ) async {
     final token = await TokenStorage.getToken();
-    if (token == null || token.isEmpty) {
+    if (!TokenStorage.usesCookieSession && (token == null || token.isEmpty)) {
       throw const SecurityQuestionsException(
         'Your session has expired. Please log in again.',
       );
@@ -30,11 +30,11 @@ class SecurityQuestionsService {
     final http.Response response;
     try {
       final csrfToken = await ApiService.getCsrfToken();
-      response = await http
+      response = await ApiService.client
           .post(
             Uri.parse('${ApiService.baseUrl}$path'),
             headers: {
-              'Authorization': 'Bearer $token',
+              ...ApiService.authHeaders(token),
               'Content-Type': 'application/json',
               'Accept': 'application/json',
               'X-CSRF-Token': csrfToken,

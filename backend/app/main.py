@@ -45,6 +45,8 @@ async def add_security_headers(request, call_next):
     response = await call_next(request)
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
+    # Sensitive authenticated data must not reappear from a browser cache.
+    response.headers["Cache-Control"] = "no-store"
     return response
 
 app.include_router(auth_router)

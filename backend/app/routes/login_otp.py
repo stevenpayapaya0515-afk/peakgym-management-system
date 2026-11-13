@@ -2,8 +2,9 @@
 from datetime import datetime, timedelta, timezone
 from math import ceil
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
+from typing import Literal
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -29,7 +30,7 @@ from fastapi import Request
 from app.security.activity_logger import record_security_event
 from app.security.login_alerts import send_login_lockout_alert
 from app.security.token import create_access_token, password_token_stamp
-from app.security.session import create_session
+from app.security.session import create_session, set_session_cookie, revoke_session, SESSION_COOKIE_NAME
 from app.security.ip_blocking import reject_blocked_ip, block_after_failed_password
 from app.security.policy import IDLE_SESSION_TIMEOUT_SECONDS, SESSION_WARNING_BEFORE_SECONDS
 
@@ -54,6 +55,7 @@ class LoginStartRequest(BaseModel):
 class LoginVerifyRequest(BaseModel):
     username: str = Field(min_length=1, max_length=50)
     otp_code: str = Field(pattern=r"^[0-9]{6}$")
+    token_transport: Literal["cookie", "bearer"] = "bearer"
 
 
 # =====================================
@@ -343,6 +345,7 @@ def start_login(
 def verify_login_otp(
     data: LoginVerifyRequest,
     request: Request,
+    response: Response,
     db: Session = Depends(get_db)
 ):
     # A blocked address cannot finish an earlier OTP challenge either.
@@ -480,23 +483,34 @@ def verify_login_otp(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent", "")[:512],
     )
-    access_token = create_access_token({
-        "sub": str(user.id),
-        "role": user.role,
-        "amr": ["pwd", "otp"],
-        "pwdv": password_token_stamp(user.password),
-        "sid": session["session_id"],
-    })
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
+    result = {
         "idle_timeout_seconds": IDLE_SESSION_TIMEOUT_SECONDS,
         "warning_before_seconds": SESSION_WARNING_BEFORE_SECONDS,
         "user": {
             "id": user.id,
             "username": user.username,
             "email": user.email,
-            "role": user.role
-        }
+            "role": user.role,
+        },
     }
+    if data.token_transport == "cookie":
+        # Regenerate the browser session after completing both login factors.
+        old_cookie = request.cookies.get(SESSION_COOKIE_NAME)
+        if old_cookie:
+            revoke_session(db, old_cookie)
+        set_session_cookie(response, session["session_token"])
+        # The browser response never contains a JavaScript-readable JWT.
+        return result
+
+    # Retain the existing native Flutter Bearer JWT workflow.
+    result.update({
+        "access_token": create_access_token({
+            "sub": str(user.id),
+            "role": user.role,
+            "amr": ["pwd", "otp"],
+            "pwdv": password_token_stamp(user.password),
+            "sid": session["session_id"],
+        }),
+        "token_type": "bearer",
+    })
+    return result

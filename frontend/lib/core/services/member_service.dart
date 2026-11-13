@@ -7,10 +7,10 @@ import '../storage/token_storage.dart';
 import 'api_service.dart';
 
 class MemberService {
-  static Future<String> _token() async {
+  static Future<String?> _token() async {
     final token = await TokenStorage.getToken();
 
-    if (token == null || token.isEmpty) {
+    if (!TokenStorage.usesCookieSession && (token == null || token.isEmpty)) {
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -72,7 +72,7 @@ class MemberService {
     );
 
     request.headers.addAll({
-      'Authorization': 'Bearer $token',
+      ...ApiService.authHeaders(token),
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     });
@@ -85,15 +85,9 @@ class MemberService {
       request.body = jsonEncode(body);
     }
 
-    final client = http.Client();
-
-    try {
-      final streamed = await client.send(request);
-      final response = await http.Response.fromStream(streamed);
-      return _decode(response);
-    } finally {
-      client.close();
-    }
+    final streamed = await ApiService.client.send(request);
+    final response = await http.Response.fromStream(streamed);
+    return _decode(response);
   }
 
   static Future<List<Map<String, dynamic>>> getMembers() async {
@@ -184,9 +178,9 @@ class MemberService {
   static Future<Uint8List?> photo(int memberId) async {
     final token = await _token();
 
-    final response = await http.get(
+    final response = await ApiService.client.get(
       Uri.parse('${ApiService.baseUrl}/members/$memberId/photo'),
-      headers: {'Authorization': 'Bearer $token'},
+      headers: ApiService.authHeaders(token),
     );
 
     if (response.statusCode == 404) {
@@ -213,7 +207,7 @@ class MemberService {
       Uri.parse('${ApiService.baseUrl}/members/$memberId/photo'),
     );
 
-    request.headers['Authorization'] = 'Bearer $token';
+    request.headers.addAll(ApiService.authHeaders(token));
     request.headers['X-CSRF-Token'] = await ApiService.getCsrfToken();
 
     request.files.add(
@@ -224,14 +218,8 @@ class MemberService {
       ),
     );
 
-    final client = http.Client();
-
-    try {
-      final streamed = await client.send(request);
-      _decode(await http.Response.fromStream(streamed));
-    } finally {
-      client.close();
-    }
+    final streamed = await ApiService.client.send(request);
+    _decode(await http.Response.fromStream(streamed));
   }
 
   static Future<void> removePhoto(int memberId) async {

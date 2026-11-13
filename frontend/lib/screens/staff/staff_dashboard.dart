@@ -50,7 +50,7 @@ class _StaffDashboardState extends State<StaffDashboard> {
     try {
       final token = await TokenStorage.getToken();
 
-      if (token == null || token.isEmpty) {
+      if (!TokenStorage.usesCookieSession && (token == null || token.isEmpty)) {
         if (!mounted) return;
 
         setState(() {
@@ -836,7 +836,7 @@ class _StaffLogoutDialogState extends State<_StaffLogoutDialog> {
 
     try {
       final token = await TokenStorage.getToken();
-      if (token != null) {
+      if (TokenStorage.usesCookieSession || token != null) {
         try {
           await ApiService.post('/auth/session/logout', token: token)
                                       .timeout(const Duration(seconds: 3));
